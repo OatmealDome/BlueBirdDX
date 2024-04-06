@@ -8,14 +8,7 @@ namespace BlueBirdDX.Config;
 public class BbConfig
 {
     private static BbConfig? _instance = null;
-
-    public static BbConfig Instance
-    {
-        get
-        {
-            return _instance!;
-        }
-    }
+    public static BbConfig Instance => _instance!;
 
     private const string ConfigPath = "config.json";
     
