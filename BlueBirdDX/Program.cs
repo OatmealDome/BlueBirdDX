@@ -1,3 +1,12 @@
-﻿// See https://aka.ms/new-console-template for more information
+﻿using BlueBirdDX.Config;
 
-Console.WriteLine("Hello, World!");
+BbConfig.Load();
+
+if (!BbConfig.Exists())
+{
+    BbConfig.Instance.Save();
+
+    Console.WriteLine("Wrote initial configuration, will now exit");
+
+    return;
+}
