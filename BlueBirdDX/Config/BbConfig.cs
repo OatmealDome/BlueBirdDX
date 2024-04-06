@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using BlueBirdDX.Config.Database;
 using BlueBirdDX.Config.Logging;
 
 namespace BlueBirdDX.Config;
@@ -20,6 +21,13 @@ public class BbConfig
     
     [JsonPropertyName("Logging")]
     public LoggingConfig LoggingConfig
+    {
+        get;
+        set;
+    }
+    
+    [JsonPropertyName("Database")]
+    public DatabaseConfig Database
     {
         get;
         set;
