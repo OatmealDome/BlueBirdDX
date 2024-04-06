@@ -1,4 +1,6 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using BlueBirdDX.Config.Logging;
 
 namespace BlueBirdDX.Config;
 
@@ -15,6 +17,13 @@ public class BbConfig
     }
 
     private const string ConfigPath = "config.json";
+    
+    [JsonPropertyName("Logging")]
+    public LoggingConfig LoggingConfig
+    {
+        get;
+        set;
+    }
 
     public BbConfig()
     {
