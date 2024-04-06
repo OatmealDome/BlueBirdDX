@@ -1,4 +1,5 @@
 ﻿using BlueBirdDX.Config;
+using BlueBirdDX.Database;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
@@ -43,3 +44,5 @@ Log.Logger = logConfig.CreateLogger();
 ILogger localLogContext = Log.ForContext(Constants.SourceContextPropertyName, "Program");
 
 localLogContext.Warning("Starting up");
+
+DatabaseManager.Initialize();
