@@ -49,3 +49,7 @@ localLogContext.Warning("Starting up");
 DatabaseManager.Initialize();
 
 await JobScheduler.Initialize();
+
+localLogContext.Information("Start up complete");
+
+await Task.Delay(-1);
