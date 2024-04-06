@@ -31,11 +31,11 @@ LoggerConfiguration logConfig = new LoggerConfiguration()
     .WriteTo.Async(c =>
         c.File("Logs/.log", outputTemplate: logFormat, rollingInterval: RollingInterval.Day));
 
-string slackWebhookUrl = BbConfig.Instance.LoggingConfig.SlackWebHookUrl;
+string slackWebhookUrl = BbConfig.Instance.Logging.SlackWebHookUrl;
 if (slackWebhookUrl != "")
 {
     logConfig = logConfig.WriteTo.Async(c =>
-        c.Slack(BbConfig.Instance.LoggingConfig.SlackWebHookUrl, restrictedToMinimumLevel: LogEventLevel.Warning));
+        c.Slack(BbConfig.Instance.Logging.SlackWebHookUrl, restrictedToMinimumLevel: LogEventLevel.Warning));
 }
 
 Log.Logger = logConfig.CreateLogger();

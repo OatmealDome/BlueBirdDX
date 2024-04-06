@@ -13,7 +13,7 @@ public class BbConfig
     private const string ConfigPath = "config.json";
     
     [JsonPropertyName("Logging")]
-    public LoggingConfig LoggingConfig
+    public LoggingConfig Logging
     {
         get;
         set;
