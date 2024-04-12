@@ -1,3 +1,7 @@
+using BlueBirdDX.Common.Post;
+using BlueBirdDX.Database;
+using MongoDB.Driver;
+
 namespace BlueBirdDX.Social;
 
 public class PostThreadManager
@@ -5,9 +9,11 @@ public class PostThreadManager
     private static PostThreadManager? _instance;
     public static PostThreadManager Instance => _instance!;
 
+    private readonly IMongoCollection<PostThread> _postThreadCollection;
+
     private PostThreadManager()
     {
-        
+        _postThreadCollection = DatabaseManager.Instance.GetCollection<PostThread>("threads");
     }
     
     public static void Initialize()
