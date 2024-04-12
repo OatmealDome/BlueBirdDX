@@ -15,7 +15,7 @@ public class PostThreadManager
         _instance = new PostThreadManager();
     }
 
-    public async Task ProcessPosts()
+    public async Task ProcessPostThreads()
     {
         // TODO
         throw new NotImplementedException();

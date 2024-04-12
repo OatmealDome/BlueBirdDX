@@ -7,6 +7,6 @@ public class BbProcessPostThreadsJob : BbJob
 {
     public override async Task ExecuteJob(IJobExecutionContext context)
     {
-        await PostThreadManager.Instance.ProcessPosts();
+        await PostThreadManager.Instance.ProcessPostThreads();
     }
 }
