@@ -24,6 +24,12 @@ public class PostThread
         set;
     }
 
+    public DateTime? ScheduledTime
+    {
+        get;
+        set;
+    }
+
     public PostThreadState State
     {
         get;
