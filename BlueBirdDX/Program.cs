@@ -1,6 +1,7 @@
 ﻿using BlueBirdDX.Config;
 using BlueBirdDX.Database;
 using BlueBirdDX.Scheduler;
+using BlueBirdDX.Social;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
@@ -49,6 +50,8 @@ localLogContext.Warning("Starting up");
 DatabaseManager.Initialize();
 
 await JobScheduler.Initialize();
+
+PostThreadManager.Initialize();
 
 localLogContext.Information("Start up complete");
 
