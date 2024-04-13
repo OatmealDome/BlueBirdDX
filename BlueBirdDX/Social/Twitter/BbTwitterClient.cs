@@ -23,7 +23,7 @@ public class BbTwitterClient
         return await _internalClient.Upload.UploadTweetImageAsync(image);
     }
     
-    public async Task Tweet(string text, string[]? mediaIds)
+    public async Task Tweet(string text, string? replyToTweetId = null, string[]? mediaIds = null)
     {
         TweetV2RequestMedia? tweetRequestMedia;
 
@@ -39,10 +39,21 @@ public class BbTwitterClient
             tweetRequestMedia = null;
         }
 
+        TweetV2RequestReply? tweetRequestReply = null;
+
+        if (replyToTweetId != null)
+        {
+            tweetRequestReply = new TweetV2RequestReply()
+            {
+                InReplyToTweetId = replyToTweetId
+            };
+        }
+
         TweetV2Request tweetRequest = new TweetV2Request()
         {
             Text = text,
-            Media = tweetRequestMedia
+            Media = tweetRequestMedia,
+            Reply = tweetRequestReply
         };
 
         await _internalClient.Execute.AdvanceRequestAsync(request =>

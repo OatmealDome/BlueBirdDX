@@ -18,4 +18,12 @@ public class TweetV2Request
         get;
         set;
     }
+    
+    [JsonPropertyName("reply")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public TweetV2RequestReply? Reply
+    {
+        get;
+        set;
+    }
 }
