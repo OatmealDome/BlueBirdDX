@@ -1,7 +1,17 @@
+using BlueBirdDX.WebApp.Models;
+using BlueBirdDX.WebApp.Services;
+using Microsoft.Extensions.Options;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddRazorPages();
+IServiceCollection services = builder.Services;
+
+services.Configure<DatabaseSettings>(builder.Configuration.GetSection(nameof(DatabaseSettings)));
+services.AddSingleton<DatabaseSettings>(sp => sp.GetRequiredService<IOptions<DatabaseSettings>>().Value);
+services.AddSingleton<DatabaseService>();
+
+services.AddRazorPages();
 
 var app = builder.Build();
 
