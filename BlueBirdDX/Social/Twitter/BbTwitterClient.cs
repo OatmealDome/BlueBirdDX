@@ -25,7 +25,7 @@ public class BbTwitterClient
     
     public async Task Tweet(string text, string? replyToTweetId = null, string[]? mediaIds = null)
     {
-        TweetV2RequestMedia? tweetRequestMedia;
+        TweetV2RequestMedia? tweetRequestMedia = null;
 
         if (mediaIds != null)
         {
@@ -33,10 +33,6 @@ public class BbTwitterClient
             {
                 MediaIds = mediaIds
             };
-        }
-        else
-        {
-            tweetRequestMedia = null;
         }
 
         TweetV2RequestReply? tweetRequestReply = null;
