@@ -8,11 +8,13 @@ public class PostThreadManager
 {
     private static PostThreadManager? _instance;
     public static PostThreadManager Instance => _instance!;
-
+    
+    private readonly IMongoCollection<AccountGroup> _accountGroupCollection;
     private readonly IMongoCollection<PostThread> _postThreadCollection;
 
     private PostThreadManager()
     {
+        _accountGroupCollection = DatabaseManager.Instance.GetCollection<AccountGroup>("accounts");
         _postThreadCollection = DatabaseManager.Instance.GetCollection<PostThread>("threads");
     }
     
