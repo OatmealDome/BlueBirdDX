@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using BlueBirdDX.Common.Account;
 using Tweetinvi;
+using Tweetinvi.Core.Web;
 using Tweetinvi.Models;
 using HttpMethod = Tweetinvi.Models.HttpMethod;
 
@@ -25,7 +26,7 @@ public class BbTwitterClient
         return media.Id.ToString()!;
     }
     
-    public async Task Tweet(string text, string? replyToTweetId = null, string[]? mediaIds = null)
+    public async Task<string> Tweet(string text, string? replyToTweetId = null, string[]? mediaIds = null)
     {
         TweetV2RequestMedia? tweetRequestMedia = null;
 
@@ -54,7 +55,7 @@ public class BbTwitterClient
             Reply = tweetRequestReply
         };
 
-        await _internalClient.Execute.AdvanceRequestAsync(request =>
+        ITwitterResult result = await _internalClient.Execute.AdvanceRequestAsync(request =>
         {
             string json = JsonSerializer.Serialize(tweetRequest);
 
@@ -62,5 +63,9 @@ public class BbTwitterClient
             request.Query.HttpMethod = HttpMethod.POST;
             request.Query.HttpContent = new StringContent(json, Encoding.UTF8, "application/json");
         });
+
+        TweetV2Reply tweetReply = JsonSerializer.Deserialize<TweetV2Reply>(result.Response.Content)!;
+
+        return tweetReply.InnerData.Id;
     }
 }
