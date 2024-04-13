@@ -18,9 +18,11 @@ public class BbTwitterClient
             account.AccessTokenSecret);
     }
 
-    public async Task<IMedia> UploadImage(byte[] image)
+    public async Task<string> UploadImage(byte[] image)
     {
-        return await _internalClient.Upload.UploadTweetImageAsync(image);
+        IMedia media = await _internalClient.Upload.UploadTweetImageAsync(image);
+
+        return media.Id.ToString()!;
     }
     
     public async Task Tweet(string text, string? replyToTweetId = null, string[]? mediaIds = null)
