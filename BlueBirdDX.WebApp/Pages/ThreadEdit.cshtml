@@ -1,5 +1,9 @@
 @page "/thread/{threadId}"
 @using System.Text.Json
+@using BlueBirdDX.Common.Account
+@using BlueBirdDX.WebApp.Services
+@using MongoDB.Driver
+@inject DatabaseService Database
 @model ThreadEditModel
 @{
     ViewData["Title"] = "Edit Thread";
@@ -17,6 +21,14 @@
     <div>
         <label for="nameInput" class="form-label">Name</label>
         <input id="nameInput" class="form-control" type="text">
+    </div>
+    <div>
+        <select id="groupSelect" class="form-select">
+            @foreach (AccountGroup group in Database.AccountGroupCollection.AsQueryable())
+            {
+                <option value="@group._id.ToString()">@group.Name</option>
+            }
+        </select>
     </div>
     <label class="form-label mb-0">State</label>
     <div>
@@ -159,6 +171,10 @@
                 currentThread.name = $(this).val();
             })
             
+            $("#groupSelect").change(function () {
+                currentThread.target_group = $(this).val();
+            });
+            
             $("input[type=radio]").change(function () {
                 const val = Number($(this).val());
                 
@@ -207,6 +223,18 @@
             });
             
             $("#nameInput").val(currentThread.name);
+            
+            if (currentThread.target_group !== "000000000000000000000000") {
+                $("#groupSelect option").each(function () {
+                    if (currentThread.target_group === $(this).val()) {
+                        $(this).attr("selected", "selected");
+                    }
+                });
+            } else {
+                // Correct default value to the first group in the dropdown
+                $("#groupSelect").children(":first").attr("selected", "selected");
+                currentThread.target_group = $('#groupSelect').find(":selected").val();
+            }
             
             let stateSelector;
             
