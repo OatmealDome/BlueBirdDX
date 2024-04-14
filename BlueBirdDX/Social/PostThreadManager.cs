@@ -115,7 +115,7 @@ public class PostThreadManager
 
         foreach (PostThreadItem item in postThread.Items)
         {
-            await client.Tweet(item.Text, replyToTweetId: previousId);
+            previousId = await client.Tweet(item.Text, replyToTweetId: previousId);
         }
     }
 }
