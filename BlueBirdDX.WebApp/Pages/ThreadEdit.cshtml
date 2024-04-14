@@ -31,7 +31,7 @@
     </div>
     <div id="timeContainer" class="d-none">
         <label for="timeInput" class="form-label">Scheduled Time</label>
-        <input id="timeInput" class="form-control" type="datetime-local" value="1970-01-01T00:00" />
+        <input id="timeInput" class="form-control" type="datetime-local" />
     </div>
     <div id="postsContainer" class="d-grid gap-3"></div>
     <button id="addPostButton" class="btn btn-secondary">Add Post</button>
@@ -107,6 +107,11 @@
                     $("#timeContainer").removeClass("d-none");
                 }
             });
+            
+            $("#timeInput").change(function () {
+                // convert to UTC, then to a proper ISO 8601 string
+                currentThread.scheduled_time = luxon.DateTime.fromISO($(this).val()).toUTC().toISO();
+            });
                         
             $("#threadItemTemplate").on("input", "textarea", function () {
                 const parent = $(this).parent();
@@ -149,6 +154,11 @@
                 
                 $("#timeContainer").removeClass("d-none");
             }
+            
+            const scheduledTime = luxon.DateTime.fromISO(currentThread.scheduled_time);
+            $("#timeInput").val(scheduledTime.toISO({
+                includeOffset: false
+            }));
             
             $(stateSelector).prop("checked", true);
             
