@@ -1,3 +1,4 @@
+using BlueBirdDX.Common.Account;
 using BlueBirdDX.Common.Post;
 using BlueBirdDX.WebApp.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -41,6 +42,20 @@ public class PostThreadApiController : ControllerBase
 
     private bool IsIncomingThreadSane(PostThreadApi inState, out string? error)
     {
+        if (!ObjectId.TryParse(inState.TargetGroup, out ObjectId groupId))
+        {
+            error = "Invalid account group ID";
+            return false;
+        }
+
+        AccountGroup? group = _database.AccountGroupCollection.AsQueryable().FirstOrDefault(g => g._id == groupId);
+
+        if (group == null)
+        {
+            error = "Invalid account group ID";
+            return false;
+        }
+        
         if (inState.ScheduledTime.Kind != DateTimeKind.Utc)
         {
             error = "Scheduled time is not in UTC";
