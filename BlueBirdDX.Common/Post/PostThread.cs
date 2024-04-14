@@ -12,6 +12,12 @@ public class PostThread
         set;
     }
 
+    public int SchemaVersion
+    {
+        get;
+        set;
+    } = LatestSchemaVersion;
+
     public string Name
     {
         get;
