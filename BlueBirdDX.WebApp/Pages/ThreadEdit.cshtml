@@ -203,7 +203,9 @@
                 updateCharacterCounter(parent.children(".thread-item-character-counter"), text);
             }).on("click", ".thread-item-delete-button", function () {
                 if (currentThread.items.length === 1) {
-                    alert("Can't remove last post in thread.");
+                    $("#error-element").text("Can't remove last post in thread.");
+                    $("#error-modal").modal("show");
+                    
                     return;
                 }
                 
