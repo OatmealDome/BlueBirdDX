@@ -79,23 +79,6 @@
     </div>
 </div>
 
-<!-- Temporary success modal -->
-<div id="success-modal" class="modal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Success</h5>
-            </div>
-            <div class="modal-body">
-                <p>Saved.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 @section Scripts
 {
     <script src="~/lib/twitter-text/dist/twitter-text-3.1.0.bundle.js"></script>
@@ -139,7 +122,7 @@
         }
         
         function handleAjaxDone(data) {
-            $("#success-modal").modal("show");
+            window.location = "/";
         }
         
         function handleAjaxFail(xhr, textStatus, error) {
