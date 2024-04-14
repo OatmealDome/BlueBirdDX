@@ -42,7 +42,26 @@ public class PostThreadManager
         {
             if (referenceNow > postThread.ScheduledTime)
             {
-                await Post(postThread);
+                TimeSpan span = referenceNow - postThread.ScheduledTime;
+                
+                // We should only post threads that are within a 5 minute window of its scheduled time.
+                if (span.TotalMinutes < 5.0d)
+                {
+                    await Post(postThread);
+                }
+                else
+                {
+                    LogContext.Error(
+                        "Skipping thread {id} because its scheduled time is outside of the margin of error",
+                        postThread._id.ToString());
+                    
+                    postThread.State = PostThreadState.Error;
+                    postThread.ErrorMessage =
+                        "Scheduled time is in past but outside of margin of error when processed by PostThreadManager";
+
+                    await _postThreadCollection.ReplaceOneAsync(
+                        Builders<PostThread>.Filter.Eq(p => p._id, postThread._id), postThread);
+                }
             }
         }
     }
