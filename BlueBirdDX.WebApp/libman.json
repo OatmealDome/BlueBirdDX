@@ -5,6 +5,10 @@
     {
       "library": "bootstrap@5.3.3",
       "destination": "wwwroot/lib/bootstrap/dist"
+    },
+    {
+      "library": "luxon@3.4.4",
+      "destination": "wwwroot/lib/luxon/dist"
     }
   ]
 }
