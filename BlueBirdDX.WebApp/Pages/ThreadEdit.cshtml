@@ -1,0 +1,123 @@
+@page "/thread/{threadId}"
+@using System.Text.Json
+@model ThreadEditModel
+@{
+    ViewData["Title"] = "Edit Thread";
+}
+
+<style scoped>
+    .thread-item-character-counter {
+        font-family: monospace;
+    }
+</style>
+
+<h2>Edit Thread</h2>
+
+<div class="d-grid gap-3 w-50">
+    <div>
+        <label for="nameInput" class="form-label">Name</label>
+        <input id="nameInput" class="form-control" type="text">
+    </div>
+    <div>
+        <label for="timeInput" class="form-label">Scheduled Time</label>
+        <input id="timeInput" class="form-control" type="datetime-local" value="1970-01-01T00:00" />
+    </div>
+    <div id="postsContainer" class="d-grid gap-3"></div>
+    <button id="addPostButton" class="btn btn-secondary">Add Post</button>
+</div>
+
+<div class="text-end w-50 mt-3">
+    <button id="saveButton" class="btn btn-primary">Save</button>
+</div>
+
+<!-- Templates -->
+<div class="d-none">
+    <div id="threadItemTemplate" class="input-group thread-item">
+        <textarea class="form-control thread-item-textarea" rows="4"></textarea>
+        <span class="input-group-text thread-item-character-counter">0</span>
+        <button class="btn btn-outline-secondary thread-item-delete-button" type="button">🗑️</button>
+    </div>
+</div>
+
+@section Scripts
+{
+    <script src="~/lib/twitter-text/dist/twitter-text-3.1.0.bundle.js"></script>
+    <script src="~/lib/luxon/dist/luxon.min.js"></script>
+
+    <script>
+        let currentThread = @Html.Raw(JsonSerializer.Serialize(Model.ApiThread));
+        
+        function updateCharacterCounter(characterCounterSpan, text) {
+            const twitterOutput = twitter.parseTweet(text);
+            
+            characterCounterSpan.text(String(twitterOutput.weightedLength).padStart(3, '0'));
+            
+            if (twitterOutput.valid) {
+                characterCounterSpan.removeClass("text-danger");
+            } else {
+                characterCounterSpan.addClass("text-danger");
+            }
+        }
+        
+        function rebuildPostsContainer() {
+            const container = $("#postsContainer");
+            
+            container.empty();
+            container.append("<label>Posts</label>");
+            
+            for (let i = 0; i < currentThread.items.length; i++) {
+                const item = currentThread.items[i];
+                
+                const clone = $("#threadItemTemplate").clone(true, true);
+                clone.removeAttr("id");
+                clone.attr("data-thread-item-idx", i);
+                
+                clone.children("textarea").val(item.text);
+                
+                updateCharacterCounter(clone.children(".thread-item-character-counter"), item.text);
+                
+                clone.appendTo(container);
+            }
+        }
+        
+        $(function () {
+            $("#nameInput").on("input", function () {
+                currentThread.name = $(this).val();
+            })
+                        
+            $("#threadItemTemplate").on("input", "textarea", function () {
+                const parent = $(this).parent();
+                const idx = parent.attr("data-thread-item-idx");
+                const item = currentThread.items[idx];
+                const text = $(this).val();
+                
+                item.text = text;
+                
+                updateCharacterCounter(parent.children(".thread-item-character-counter"), text);
+            }).on("click", ".thread-item-delete-button", function () {
+                if (currentThread.items.length === 1) {
+                    alert("Can't remove last post in thread.");
+                    return;
+                }
+                
+                const idx = $(this).parent().attr("data-thread-item-idx");
+
+                currentThread.items.splice(idx, 1);
+                
+                rebuildPostsContainer();
+            });
+            
+            $("#addPostButton").click(function () {
+                currentThread.items.push({
+                    text: ""
+                });
+                
+                rebuildPostsContainer();
+            });
+            
+            $("#nameInput").val(currentThread.name);
+
+            rebuildPostsContainer();
+        });
+    </script>
+}
