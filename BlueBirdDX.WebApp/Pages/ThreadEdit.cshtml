@@ -18,7 +18,18 @@
         <label for="nameInput" class="form-label">Name</label>
         <input id="nameInput" class="form-control" type="text">
     </div>
+    <label class="form-label mb-0">State</label>
     <div>
+        <div class="form-check form-check-inline">
+            <input id="stateRadioDraft" class="form-check-input" type="radio" name="stateRadio" value="0">
+            <label class="form-check-label" for="stateRadioDraft">Draft</label>
+        </div>
+        <div class="form-check form-check-inline">
+            <input id="stateRadioEnqueued" class="form-check-input" type="radio" name="stateRadio" value="1">
+            <label class="form-check-label" for="stateRadioEnqueued">Enqueued</label>
+        </div>
+    </div>
+    <div id="timeContainer" class="d-none">
         <label for="timeInput" class="form-label">Scheduled Time</label>
         <input id="timeInput" class="form-control" type="datetime-local" value="1970-01-01T00:00" />
     </div>
@@ -84,6 +95,18 @@
             $("#nameInput").on("input", function () {
                 currentThread.name = $(this).val();
             })
+            
+            $("input[type=radio]").change(function () {
+                const val = Number($(this).val());
+                
+                currentThread.state = val;
+                
+                if (val === 0) {
+                    $("#timeContainer").addClass("d-none");
+                } else {
+                    $("#timeContainer").removeClass("d-none");
+                }
+            });
                         
             $("#threadItemTemplate").on("input", "textarea", function () {
                 const parent = $(this).parent();
@@ -116,7 +139,19 @@
             });
             
             $("#nameInput").val(currentThread.name);
-
+            
+            let stateSelector;
+            
+            if (currentThread.state === 0) {
+                stateSelector = "#stateRadioDraft";                
+            } else {
+                stateSelector = "#stateRadioEnqueued";
+                
+                $("#timeContainer").removeClass("d-none");
+            }
+            
+            $(stateSelector).prop("checked", true);
+            
             rebuildPostsContainer();
         });
     </script>
