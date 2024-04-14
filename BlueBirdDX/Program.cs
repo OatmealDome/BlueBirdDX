@@ -1,7 +1,10 @@
 ﻿using BlueBirdDX.Config;
 using BlueBirdDX.Database;
 using BlueBirdDX.Scheduler;
+using BlueBirdDX.Scheduler.Job;
 using BlueBirdDX.Social;
+using BlueBirdDX.Util;
+using Quartz;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
@@ -54,5 +57,19 @@ await JobScheduler.Initialize();
 PostThreadManager.Initialize();
 
 localLogContext.Information("Start up complete");
+
+IJobDetail processJob = JobBuilder.Create<BbProcessPostThreadsJob>()
+    .WithIdentity("processJob")
+    .Build();
+
+ITrigger processTrigger = TriggerBuilder.Create()
+    .WithIdentity("processTrigger")
+    .StartAt(DateTime.Now.GetNextInterval(TimeSpan.FromMinutes(1)))
+    .WithSimpleSchedule(builder => builder
+        .WithIntervalInMinutes(1)
+        .RepeatForever())
+    .Build();
+
+await JobScheduler.Instance.ScheduleJob(processJob, processTrigger);
 
 await Task.Delay(-1);
