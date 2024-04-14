@@ -40,7 +40,7 @@ public class PostThreadManager
 
         foreach (PostThread postThread in enqueuedPostThreads)
         {
-            if (postThread.ScheduledTime > referenceNow)
+            if (referenceNow > postThread.ScheduledTime)
             {
                 await Post(postThread);
             }
