@@ -50,6 +50,40 @@
     </div>
 </div>
 
+<!-- Error modal -->
+<div id="error-modal" class="modal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Error</h5>
+            </div>
+            <div class="modal-body">
+                <p id="error-element">An error occurred.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Temporary success modal -->
+<div id="success-modal" class="modal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Success</h5>
+            </div>
+            <div class="modal-body">
+                <p>Saved.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts
 {
     <script src="~/lib/twitter-text/dist/twitter-text-3.1.0.bundle.js"></script>
@@ -57,6 +91,7 @@
 
     <script>
         let currentThread = @Html.Raw(JsonSerializer.Serialize(Model.ApiThread));
+        let currentThreadId = "@Model.ApiThreadId";
         
         function updateCharacterCounter(characterCounterSpan, text) {
             const twitterOutput = twitter.parseTweet(text);
@@ -89,6 +124,34 @@
                 
                 clone.appendTo(container);
             }
+        }
+        
+        function handleAjaxDone(data) {
+            $("#success-modal").modal("show");
+        }
+        
+        function handleAjaxFail(xhr, textStatus, error) {
+            let errorObj;
+            
+            try {
+                errorObj = JSON.parse(xhr.responseText);
+                
+                let errorMessage;
+                
+                if ("detail" in errorObj) {
+                    // We prefer our detailed error message if possible
+                    errorMessage = errorObj["detail"];
+                } else {
+                    // Fallback, hopefully this exists
+                    errorMessage = errorObj["title"];
+                }
+                
+                $("#error-element").text(errorMessage);
+            } catch (e) {
+                $("#error-element").text("An error occurred. Additionally, another error occurred while attempting to parse the server response.");
+            }
+            
+            $("#error-modal").modal("show");
         }
         
         $(function () {
@@ -161,6 +224,27 @@
             }));
             
             $(stateSelector).prop("checked", true);
+            
+            $("#saveButton").click(function () {
+                const json = JSON.stringify(currentThread);
+                
+                let method;
+                let url = "/api/v1/thread";
+                
+                if (currentThreadId !== "new") {
+                    method = "PUT";
+                    url += "/" + currentThreadId;
+                } else {
+                    method = "POST";
+                }
+                
+                $.ajax({
+                    method: method,
+                    url: url,
+                    data: JSON.stringify(currentThread),
+                    contentType: "application/json"
+                }).done(handleAjaxDone).fail(handleAjaxFail);
+            });
             
             rebuildPostsContainer();
         });

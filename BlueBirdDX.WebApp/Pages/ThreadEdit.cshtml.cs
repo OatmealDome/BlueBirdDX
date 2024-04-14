@@ -11,6 +11,12 @@ namespace BlueBirdDX.WebApp.Pages;
 public class ThreadEditModel : PageModel
 {
     private readonly DatabaseService _database;
+
+    public string ApiThreadId
+    {
+        get;
+        set;
+    }
     
     public PostThreadApi ApiThread
     {
@@ -46,6 +52,8 @@ public class ThreadEditModel : PageModel
 
             ApiThread = new PostThreadApi(realThread);
         }
+
+        ApiThreadId = threadId;
 
         return Page();
     }
