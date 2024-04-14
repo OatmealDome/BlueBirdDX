@@ -89,6 +89,8 @@ public class PostThreadManager
             catch (Exception e)
             {
                 LogContext.Error(e, "Failed to post thread {id} to Twitter", postThread._id.ToString());
+                
+                failed = true;
                 AppendError(e.ToString());
             }
         }
