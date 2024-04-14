@@ -1,10 +1,82 @@
 ﻿@page
+@inject DatabaseService Database
+@using BlueBirdDX.WebApp.Services
+@using MongoDB.Driver
+@using BlueBirdDX.Common.Account
 @model IndexModel
 @{
     ViewData["Title"] = "Home page";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<a class="btn btn-primary mb-3" href="/thread/new" role="button">New Thread</a>
+
+<select id="groupSelect" class="form-select mb-3">
+    @foreach (AccountGroup group in Database.AccountGroupCollection.AsQueryable())
+    {
+        <option value="@group._id.ToString()">@group.Name</option>
+    }
+</select>
+
+<table class="table">
+    <thead>
+    <tr>
+        <th scope="col">Thread Name</th>
+        <th scope="col">State</th>
+    </tr>
+    </thead>
+    <tbody>
+    </tbody>
+</table>
+
+<!-- Error modal -->
+<div id="error-modal" class="modal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Error</h5>
+            </div>
+            <div class="modal-body">
+                <p id="error-element">An error occurred while fetching threads.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
 </div>
+
+@section Scripts
+{
+    <script>
+        function repopulateTable(response) {
+            for (const thread of response) {
+                $("tbody").append("<tr><td><a href=\"/thread/" + thread.id + "/\">" + thread.name + "</a></td><td>" + thread.state + "</td></tr>");
+            }
+        }
+
+        function requestRepopulateTable() {
+            const groupId = $("#groupSelect").val();
+            
+            $("tbody").empty();
+            
+            $.ajax({
+                method: "GET",
+                url: "/api/v1/group/" + groupId + "/threads"
+            }).done(repopulateTable).fail(function () {
+                $("#error-modal").modal("show");
+            });
+        }
+        
+        $("#loadAllCheck").change(function () {
+            requestRepopulateTable();
+        });
+        
+        $(function () {
+            $("#groupSelect").change(function () {
+                requestRepopulateTable();
+            });
+            
+            requestRepopulateTable();
+        });
+    </script>
+}
