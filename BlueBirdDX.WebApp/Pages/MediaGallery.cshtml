@@ -1,0 +1,130 @@
+@page "/media"
+@using BlueBirdDX.WebApp.Services
+@using BlueBirdDX.Common.Media
+@using MongoDB.Driver
+@inject DatabaseService Database
+@{
+    ViewData["Title"] = "Media Gallery";
+}
+
+<h2>Media Gallery</h2>
+
+<button id="uploadOpenModalButton" class="btn btn-primary mb-3">Upload</button>
+
+<table class="table">
+    <thead>
+    <tr>
+        <th scope="col">Media</th>
+        <th scope="col">Creation Time</th>
+    </tr>
+    </thead>
+    <tbody>
+    @foreach (UploadedMedia media in Database.UploadedMediaCollection.AsQueryable())
+    {
+        <tr>
+            <td>@media.Name</td>
+            <td>@media.CreationTime.ToString("O")</td>
+        </tr>
+    }
+    </tbody>
+</table>
+
+<!-- Upload modal -->
+<div id="upload-modal" class="modal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Upload</h5>
+            </div>
+            <div class="modal-body">
+                <div>
+                    <input id="filePicker" type="file" class="form-control mb-3" />
+                </div>
+                <div>
+                    <button id="uploadButton" class="btn btn-primary">Upload</button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Uploading modal -->
+<div id="uploading-modal" class="modal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Uploading</h5>
+            </div>
+            <div class="modal-body">
+                <p id="uploading-element">The file is being uploaded. Please wait.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Error modal -->
+<div id="error-modal" class="modal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Error</h5>
+            </div>
+            <div class="modal-body">
+                <p id="error-element">An error occurred.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function showErrorModal(errorMessage) {
+            $("#error-element").text("An error occurred. " + errorMessage);
+            $("#error-modal").modal("show");
+            $("#uploading-modal").modal("hide");
+        }
+        
+        $(function () {
+            $("#uploadOpenModalButton").click(function () {
+                $("#upload-modal").modal("show");
+            });
+            
+            $("#uploadButton").click(function () {
+                const files = $("#filePicker").prop('files');
+                
+                if (!files || files.length < 0) {
+                    showErrorModal("No files selected.");
+                    return;
+                }
+                
+                $("#upload-modal").modal("hide");
+                
+                $("#uploading-modal").modal({backdrop: 'static', keyboard: false});
+                $("#uploading-modal").modal("show");
+                
+                const file = files[0];
+                
+                const formData = new FormData();
+                formData.set("file", file);
+                
+                $.ajax({
+                    method: "POST",
+                    url: "/api/v1/media",
+                    data: formData,
+                    processData: false,
+                    contentType: false
+                }).done(function (response) {
+                    window.location = "/media";
+                }).fail(function () {
+                    showErrorModal("Failed to upload file.");
+                });
+            });
+        });
+    </script>
+}
