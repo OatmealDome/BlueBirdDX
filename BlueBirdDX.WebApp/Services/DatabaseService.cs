@@ -1,4 +1,5 @@
 using BlueBirdDX.Common.Account;
+using BlueBirdDX.Common.Media;
 using BlueBirdDX.Common.Post;
 using BlueBirdDX.WebApp.Models;
 using MongoDB.Driver;
@@ -10,6 +11,7 @@ public class DatabaseService
     private readonly MongoClient _client;
 
     public readonly IMongoCollection<AccountGroup> AccountGroupCollection;
+    public readonly IMongoCollection<UploadedMedia> UploadedMediaCollection;
     public readonly IMongoCollection<PostThread> PostThreadCollection;
 
     public DatabaseService(DatabaseSettings settings)
@@ -19,6 +21,7 @@ public class DatabaseService
         IMongoDatabase database = _client.GetDatabase(settings.DatabaseName);
 
         AccountGroupCollection = database.GetCollection<AccountGroup>("accounts");
+        UploadedMediaCollection = database.GetCollection<UploadedMedia>("media");
         PostThreadCollection = database.GetCollection<PostThread>("threads");
     }
 }
