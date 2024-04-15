@@ -1,4 +1,5 @@
 using Amazon.S3;
+using Amazon.S3.Model;
 using Amazon.S3.Transfer;
 
 namespace BlueBirdDX.Common.Storage;
@@ -47,5 +48,17 @@ public class RemoteStorage
         }
 
         _transferUtility.Upload(request);
+    }
+
+    public string GetPreSignedUrlForFile(string name, int validityMinutes = 60)
+    {
+        GetPreSignedUrlRequest request = new GetPreSignedUrlRequest()
+        {
+            BucketName = _bucketName,
+            Key = name,
+            Expires = DateTime.UtcNow.AddMinutes(validityMinutes),
+        };
+
+        return _client.GetPreSignedURL(request);
     }
 }
