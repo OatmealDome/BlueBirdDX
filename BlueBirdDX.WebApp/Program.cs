@@ -11,6 +11,10 @@ services.Configure<DatabaseSettings>(builder.Configuration.GetSection(nameof(Dat
 services.AddSingleton<DatabaseSettings>(sp => sp.GetRequiredService<IOptions<DatabaseSettings>>().Value);
 services.AddSingleton<DatabaseService>();
 
+services.Configure<RemoteStorageSettings>(builder.Configuration.GetSection(nameof(RemoteStorageSettings)));
+services.AddSingleton<RemoteStorageSettings>(sp => sp.GetRequiredService<IOptions<RemoteStorageSettings>>().Value);
+services.AddSingleton<RemoteStorageService>();
+
 services.AddRazorPages();
 
 var app = builder.Build();
