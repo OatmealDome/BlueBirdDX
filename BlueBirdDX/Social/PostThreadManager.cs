@@ -1,6 +1,5 @@
 using System.Text;
 using BlueBirdDX.Common.Account;
-using BlueBirdDX.Common.Media;
 using BlueBirdDX.Common.Post;
 using BlueBirdDX.Common.Storage;
 using BlueBirdDX.Config;
@@ -23,7 +22,6 @@ public class PostThreadManager
         Log.ForContext(Constants.SourceContextPropertyName, "PostThreadManager");
     
     private readonly IMongoCollection<AccountGroup> _accountGroupCollection;
-    private readonly IMongoCollection<UploadedMedia> _uploadedMediaCollection;
     private readonly IMongoCollection<PostThread> _postThreadCollection;
 
     private readonly RemoteStorage _remoteStorage;
@@ -31,7 +29,6 @@ public class PostThreadManager
     private PostThreadManager()
     {
         _accountGroupCollection = DatabaseManager.Instance.GetCollection<AccountGroup>("accounts");
-        _uploadedMediaCollection = DatabaseManager.Instance.GetCollection<UploadedMedia>("media");
         _postThreadCollection = DatabaseManager.Instance.GetCollection<PostThread>("threads");
 
         RemoteStorageConfig storageConfig = BbConfig.Instance.RemoteStorage;
@@ -82,25 +79,17 @@ public class PostThreadManager
 
     private async Task ProcessPostThread(PostThread postThread)
     {
-        Dictionary<ObjectId, byte[]> imageCache = new Dictionary<ObjectId, byte[]>();
-
-        foreach (PostThreadItem item in postThread.Items)
+        AttachmentCache attachmentCache = new AttachmentCache();
+        
+        foreach (ObjectId mediaId in postThread.Items.SelectMany(i => i.AttachedMedia))
         {
-            foreach (ObjectId mediaId in item.AttachedMedia)
-            {
-                if (imageCache.ContainsKey(mediaId))
-                {
-                    continue;
-                }
-
-                imageCache[mediaId] = await _remoteStorage.DownloadFile(mediaId.ToString());
-            }
+            await attachmentCache.AddMediaToCache(mediaId);
         }
         
-        await Post(postThread, imageCache);
+        await Post(postThread, attachmentCache);
     }
 
-    private async Task Post(PostThread postThread, Dictionary<ObjectId, byte[]> imageCache)
+    private async Task Post(PostThread postThread, AttachmentCache attachmentCache)
     {
         bool failed = false;
         StringBuilder errorBuilder = new StringBuilder();
@@ -118,7 +107,7 @@ public class PostThreadManager
         {
             try
             {
-                await PostToTwitter(postThread, group.Twitter, imageCache);
+                await PostToTwitter(postThread, group.Twitter, attachmentCache);
             }
             catch (Exception e)
             {
@@ -143,8 +132,7 @@ public class PostThreadManager
             Builders<PostThread>.Update.Set(p => p.State, outState));
     }
 
-    private async Task PostToTwitter(PostThread postThread, TwitterAccount account,
-        Dictionary<ObjectId, byte[]> imageCache)
+    private async Task PostToTwitter(PostThread postThread, TwitterAccount account, AttachmentCache attachmentCache)
     {
         BbTwitterClient client = new BbTwitterClient(account);
 
@@ -160,7 +148,7 @@ public class PostThreadManager
 
                 foreach (ObjectId mediaId in item.AttachedMedia)
                 {
-                    uploadedMediaIds.Add(await client.UploadImage(imageCache[mediaId]));
+                    uploadedMediaIds.Add(await client.UploadImage(attachmentCache.GetMedia(mediaId)));
                 }
 
                 twitterMediaIds = uploadedMediaIds.ToArray();
