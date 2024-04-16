@@ -61,4 +61,19 @@ public class RemoteStorage
 
         return _client.GetPreSignedURL(request);
     }
+
+    public async Task<byte[]> DownloadFile(string name)
+    {
+        GetObjectResponse response = await _client.GetObjectAsync(new GetObjectRequest()
+        {
+            BucketName = _bucketName,
+            Key = name
+        });
+
+        using MemoryStream memoryStream = new MemoryStream();
+        
+        await response.ResponseStream.CopyToAsync(memoryStream);
+
+        return memoryStream.ToArray();
+    }
 }
