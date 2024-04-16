@@ -6,9 +6,12 @@ EXPOSE 8081
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
+ARG NuGet_SourceUrl
+ARG NuGet_SourceUserName
+ARG NuGet_SourcePassword
 WORKDIR /src
-COPY ["BlueBirdDX.WebApp/BlueBirdDX.WebApp.csproj", "BlueBirdDX.WebApp/"]
-RUN dotnet restore "BlueBirdDX.WebApp/BlueBirdDX.WebApp.csproj"
+COPY ["BlueBirdDX.WebApp/BlueBirdDX.WebApp.csproj", "nuget-ci.config", "BlueBirdDX.WebApp/"]
+RUN dotnet restore --configfile "BlueBirdDX.WebApp/nuget-ci.config" "BlueBirdDX.WebApp/BlueBirdDX.WebApp.csproj"
 COPY . .
 WORKDIR "/src/BlueBirdDX.WebApp"
 RUN dotnet build "BlueBirdDX.WebApp.csproj" -c $BUILD_CONFIGURATION -o /app/build
