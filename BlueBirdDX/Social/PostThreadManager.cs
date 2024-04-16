@@ -1,5 +1,6 @@
 using System.Text;
 using BlueBirdDX.Common.Account;
+using BlueBirdDX.Common.Media;
 using BlueBirdDX.Common.Post;
 using BlueBirdDX.Common.Storage;
 using BlueBirdDX.Config;
@@ -148,7 +149,13 @@ public class PostThreadManager
 
                 foreach (ObjectId mediaId in item.AttachedMedia)
                 {
-                    uploadedMediaIds.Add(await client.UploadImage(attachmentCache.GetMediaData(mediaId)));
+                    UploadedMedia media = attachmentCache.GetMediaDocument(mediaId);
+
+                    string uploadedMediaId =
+                        await client.UploadImage(attachmentCache.GetMediaData(mediaId),
+                            media.AltText.Length > 0 ? media.AltText : null);
+                    
+                    uploadedMediaIds.Add(uploadedMediaId);
                 }
 
                 twitterMediaIds = uploadedMediaIds.ToArray();
