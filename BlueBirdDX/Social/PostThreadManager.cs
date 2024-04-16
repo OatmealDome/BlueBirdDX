@@ -1,5 +1,6 @@
 using System.Text;
 using BlueBirdDX.Common.Account;
+using BlueBirdDX.Common.Media;
 using BlueBirdDX.Common.Post;
 using BlueBirdDX.Common.Storage;
 using BlueBirdDX.Config;
@@ -21,6 +22,7 @@ public class PostThreadManager
         Log.ForContext(Constants.SourceContextPropertyName, "PostThreadManager");
     
     private readonly IMongoCollection<AccountGroup> _accountGroupCollection;
+    private readonly IMongoCollection<UploadedMedia> _uploadedMediaCollection;
     private readonly IMongoCollection<PostThread> _postThreadCollection;
 
     private readonly RemoteStorage _remoteStorage;
@@ -28,6 +30,7 @@ public class PostThreadManager
     private PostThreadManager()
     {
         _accountGroupCollection = DatabaseManager.Instance.GetCollection<AccountGroup>("accounts");
+        _uploadedMediaCollection = DatabaseManager.Instance.GetCollection<UploadedMedia>("media");
         _postThreadCollection = DatabaseManager.Instance.GetCollection<PostThread>("threads");
 
         RemoteStorageConfig storageConfig = BbConfig.Instance.RemoteStorage;
