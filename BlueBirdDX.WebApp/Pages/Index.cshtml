@@ -8,7 +8,9 @@
     ViewData["Title"] = "Home page";
 }
 
-<a class="btn btn-primary mb-3" href="/thread/new" role="button">New Thread</a>
+<div class="text-end">
+    <a class="btn btn-primary mb-3" href="/thread/new" role="button">New Thread</a>
+</div>
 
 <select id="groupSelect" class="form-select mb-3">
     @foreach (AccountGroup group in Database.AccountGroupCollection.AsQueryable())
