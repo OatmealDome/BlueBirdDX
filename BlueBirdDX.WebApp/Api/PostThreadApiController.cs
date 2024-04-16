@@ -1,4 +1,5 @@
 using BlueBirdDX.Common.Account;
+using BlueBirdDX.Common.Media;
 using BlueBirdDX.Common.Post;
 using BlueBirdDX.WebApp.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -84,6 +85,33 @@ public class PostThreadApiController : ControllerBase
         {
             error = "Thread has no items";
             return false;
+        }
+
+        foreach (PostThreadItemApi item in inState.Items)
+        {
+            if (item.AttachedMedia.Count > 4)
+            {
+                error = "Thread has too many attached media";
+                return false;
+            }
+            
+            foreach (string mediaId in item.AttachedMedia)
+            {
+                if (!ObjectId.TryParse(mediaId, out ObjectId mediaIdObj))
+                {
+                    error = "Invalid media ID";
+                    return false;
+                }
+
+                UploadedMedia? media = _database.UploadedMediaCollection.AsQueryable()
+                    .FirstOrDefault(m => m._id == mediaIdObj);
+
+                if (media == null)
+                {
+                    error = "Invalid media ID";
+                    return false;
+                }
+            }
         }
 
         error = null;
