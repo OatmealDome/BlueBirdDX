@@ -7,6 +7,7 @@ using BlueBirdDX.Config;
 using BlueBirdDX.Config.Storage;
 using BlueBirdDX.Database;
 using BlueBirdDX.Social.Twitter;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using Serilog;
 using Serilog.Core;
@@ -57,10 +58,10 @@ public class PostThreadManager
             {
                 TimeSpan span = referenceNow - postThread.ScheduledTime;
                 
-                // We should only post threads that are within a 5 minute window of its scheduled time.
+                // We should only process threads that are within a 5 minute window of its scheduled time.
                 if (span.TotalMinutes < 5.0d)
                 {
-                    await Post(postThread);
+                    await ProcessPostThread(postThread);
                 }
                 else
                 {
@@ -79,7 +80,27 @@ public class PostThreadManager
         }
     }
 
-    public async Task Post(PostThread postThread)
+    private async Task ProcessPostThread(PostThread postThread)
+    {
+        Dictionary<ObjectId, byte[]> imageCache = new Dictionary<ObjectId, byte[]>();
+
+        foreach (PostThreadItem item in postThread.Items)
+        {
+            foreach (ObjectId mediaId in item.AttachedMedia)
+            {
+                if (imageCache.ContainsKey(mediaId))
+                {
+                    continue;
+                }
+
+                imageCache[mediaId] = await _remoteStorage.DownloadFile(mediaId.ToString());
+            }
+        }
+        
+        await Post(postThread, imageCache);
+    }
+
+    private async Task Post(PostThread postThread, Dictionary<ObjectId, byte[]> imageCache)
     {
         bool failed = false;
         StringBuilder errorBuilder = new StringBuilder();
@@ -97,7 +118,7 @@ public class PostThreadManager
         {
             try
             {
-                await PostToTwitter(postThread, group.Twitter);
+                await PostToTwitter(postThread, group.Twitter, imageCache);
             }
             catch (Exception e)
             {
@@ -121,8 +142,9 @@ public class PostThreadManager
         await _postThreadCollection.UpdateOneAsync(p => p._id == postThread._id,
             Builders<PostThread>.Update.Set(p => p.State, outState));
     }
-    
-    private async Task PostToTwitter(PostThread postThread, TwitterAccount account)
+
+    private async Task PostToTwitter(PostThread postThread, TwitterAccount account,
+        Dictionary<ObjectId, byte[]> imageCache)
     {
         BbTwitterClient client = new BbTwitterClient(account);
 
@@ -130,7 +152,21 @@ public class PostThreadManager
 
         foreach (PostThreadItem item in postThread.Items)
         {
-            previousId = await client.Tweet(item.Text, replyToTweetId: previousId);
+            string[]? twitterMediaIds = null;
+
+            if (item.AttachedMedia.Count > 0)
+            {
+                List<string> uploadedMediaIds = new List<string>();
+
+                foreach (ObjectId mediaId in item.AttachedMedia)
+                {
+                    uploadedMediaIds.Add(await client.UploadImage(imageCache[mediaId]));
+                }
+
+                twitterMediaIds = uploadedMediaIds.ToArray();
+            }
+
+            previousId = await client.Tweet(item.Text, replyToTweetId: previousId, mediaIds: twitterMediaIds);
         }
     }
 }
