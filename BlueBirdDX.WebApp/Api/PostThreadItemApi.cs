@@ -12,13 +12,22 @@ public class PostThreadItemApi
         set;
     }
 
+    [JsonPropertyName("attached_media")]
+    public List<string> AttachedMedia
+    {
+        get;
+        set;
+    }
+
     public PostThreadItemApi()
     {
         Text = "";
+        AttachedMedia = new List<string>();
     }
     
     public PostThreadItemApi(PostThreadItem realItem)
     {
         Text = realItem.Text;
+        AttachedMedia = realItem.AttachedMedia.Select(m => m.ToString()).ToList();
     }
 }

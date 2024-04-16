@@ -69,7 +69,8 @@ public class PostThreadApi
         realThread.ScheduledTime = ScheduledTime;
         realThread.Items = Items.Select(p => new PostThreadItem()
         {
-            Text = p.Text
+            Text = p.Text,
+            AttachedMedia = p.AttachedMedia.Select(m => ObjectId.Parse(m)).ToList()
         }).ToList();
     }
 }
