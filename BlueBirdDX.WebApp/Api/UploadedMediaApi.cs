@@ -20,9 +20,21 @@ public class UploadedMediaApi
         set;
     }
 
+    public UploadedMediaApi()
+    {
+        Name = "";
+        AltText = "";
+    }
+
     public UploadedMediaApi(UploadedMedia realMedia)
     {
         Name = realMedia.Name;
         AltText = realMedia.AltText;
+    }
+
+    public void TransferToNormal(UploadedMedia realMedia)
+    {
+        realMedia.Name = Name;
+        realMedia.AltText = AltText;
     }
 }

@@ -112,6 +112,34 @@ public class UploadedMediaApiController : ControllerBase
         return Ok(new UploadedMediaApi(media));
     }
     
+    [HttpPut]
+    [Route("/api/v1/media/{mediaId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public IActionResult PutMedia(string mediaId, [FromBody] UploadedMediaApi apiMedia)
+    {
+        UploadedMedia? realMedia = FindMediaById(mediaId);
+
+        if (realMedia == null)
+        {
+            return Problem("Invalid media ID", statusCode: 404);
+        }
+        
+        // Sanity checks
+
+        if (apiMedia.Name == "")
+        {
+            return Problem("Name cannot be empty", statusCode: 400);
+        }
+        
+        apiMedia.TransferToNormal(realMedia);
+
+        _database.UploadedMediaCollection.ReplaceOne(Builders<UploadedMedia>.Filter.Eq(m => m._id, realMedia._id),
+            realMedia);
+
+        return Ok();
+    }
+    
     [HttpGet]
     [Route("/api/v1/media/{mediaId}/url")]
     [ProducesResponseType(typeof(UploadedMediaUrlResponse), StatusCodes.Status200OK)]
