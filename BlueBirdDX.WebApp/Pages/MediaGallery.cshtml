@@ -7,9 +7,9 @@
     ViewData["Title"] = "Media Gallery";
 }
 
-<h2>Media Gallery</h2>
-
-<button id="uploadOpenModalButton" class="btn btn-primary mb-3">Upload</button>
+<div class="text-end">
+    <button id="uploadOpenModalButton" class="btn btn-primary">Upload</button>
+</div>
 
 <table class="table">
     <thead>
@@ -22,7 +22,7 @@
     @foreach (UploadedMedia media in Database.UploadedMediaCollection.AsQueryable())
     {
         <tr>
-            <td>@media.Name</td>
+            <td><a href="#" data-media-id="@media._id.ToString()">@media.Name</a></td>
             <td>@media.CreationTime.ToString("O")</td>
         </tr>
     }
@@ -91,6 +91,23 @@
         }
         
         $(function () {
+            $("[data-media-id]").each(function() {
+                $(this).click(function() {
+                    const mediaId = $(this).data("media-id");
+                    
+                    $.ajax({
+                        method: "GET",
+                        url: "/api/v1/media/" + mediaId + "/url",
+                    }).done(function (response) {
+                        window.open(response.url, "_blank");
+                    }).fail(function () {
+                        showErrorModal("Failed to generate pre-signed URL.");
+                    });
+                    
+                    return false;
+                });
+            });
+            
             $("#uploadOpenModalButton").click(function () {
                 $("#upload-modal").modal("show");
             });
