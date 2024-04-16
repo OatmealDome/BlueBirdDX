@@ -1,6 +1,9 @@
 using System.Text;
 using BlueBirdDX.Common.Account;
 using BlueBirdDX.Common.Post;
+using BlueBirdDX.Common.Storage;
+using BlueBirdDX.Config;
+using BlueBirdDX.Config.Storage;
 using BlueBirdDX.Database;
 using BlueBirdDX.Social.Twitter;
 using MongoDB.Driver;
@@ -20,10 +23,17 @@ public class PostThreadManager
     private readonly IMongoCollection<AccountGroup> _accountGroupCollection;
     private readonly IMongoCollection<PostThread> _postThreadCollection;
 
+    private readonly RemoteStorage _remoteStorage;
+
     private PostThreadManager()
     {
         _accountGroupCollection = DatabaseManager.Instance.GetCollection<AccountGroup>("accounts");
         _postThreadCollection = DatabaseManager.Instance.GetCollection<PostThread>("threads");
+
+        RemoteStorageConfig storageConfig = BbConfig.Instance.RemoteStorage;
+        
+        _remoteStorage = new RemoteStorage(storageConfig.ServiceUrl, storageConfig.Bucket, storageConfig.AccessKey,
+            storageConfig.AccessKeySecret);
     }
     
     public static void Initialize()
