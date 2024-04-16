@@ -23,7 +23,11 @@ jobs:
         run: dotnet nuget locals all --clear
       
       - name: Install dependencies
-        run: dotnet restore
+        run: dotnet restore --configfile nuget-ci.config
+        env:
+          NuGet_SourceUrl: https://nuget.pkg.github.com/oatmealdome/index.json
+          NuGet_SourceUserName: ${{ github.repository_owner }}
+          NuGet_SourcePassword: ${{ secrets.GHCR_INSTALL_PAT }}
         
       - name: Build
         run: dotnet build --configuration Release --no-restore
