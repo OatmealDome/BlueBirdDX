@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using BlueBirdDX.Config.Database;
 using BlueBirdDX.Config.Logging;
+using BlueBirdDX.Config.Storage;
 
 namespace BlueBirdDX.Config;
 
@@ -21,6 +22,13 @@ public class BbConfig
     
     [JsonPropertyName("Database")]
     public DatabaseConfig Database
+    {
+        get;
+        set;
+    }
+
+    [JsonPropertyName("RemoteStorage")]
+    public RemoteStorageConfig RemoteStorage
     {
         get;
         set;
