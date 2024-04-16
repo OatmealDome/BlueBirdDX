@@ -16,14 +16,16 @@
     <tr>
         <th scope="col">Media</th>
         <th scope="col">Creation Time</th>
+        <th scope="col">Actions</th>
     </tr>
     </thead>
     <tbody>
     @foreach (UploadedMedia media in Database.UploadedMediaCollection.AsQueryable())
     {
         <tr>
-            <td><a href="#" data-media-id="@media._id.ToString()">@media.Name</a></td>
+            <td>@media.Name</td>
             <td>@media.CreationTime.ToString("O")</td>
+            <td><a href="#" data-media-id="@media._id.ToString()">preview</a>, <a href="/media/@media._id.ToString()">edit</a></td>
         </tr>
     }
     </tbody>
