@@ -55,10 +55,12 @@
 
 <!-- Templates -->
 <div class="d-none">
-    <div id="threadItemTemplate" class="input-group thread-item">
-        <textarea class="form-control thread-item-textarea" rows="4"></textarea>
-        <span class="input-group-text thread-item-character-counter">0</span>
-        <button class="btn btn-outline-secondary thread-item-delete-button" type="button">🗑️</button>
+    <div id="threadItemTemplate">
+        <div class="input-group">
+            <textarea class="form-control thread-item-textarea" rows="4"></textarea>
+            <span class="input-group-text thread-item-character-counter">0</span>
+            <button class="btn btn-outline-secondary thread-item-delete-button" type="button">🗑️</button>
+        </div>
     </div>
 </div>
 
@@ -113,9 +115,11 @@
                 clone.removeAttr("id");
                 clone.attr("data-thread-item-idx", i);
                 
-                clone.children("textarea").val(item.text);
+                const inputGroup = clone.children(".input-group");
                 
-                updateCharacterCounter(clone.children(".thread-item-character-counter"), item.text);
+                inputGroup.children("textarea").val(item.text);
+                
+                updateCharacterCounter(inputGroup.children(".thread-item-character-counter"), item.text);
                 
                 clone.appendTo(container);
             }
@@ -174,17 +178,19 @@
                 // convert to UTC, then to a proper ISO 8601 string
                 currentThread.scheduled_time = luxon.DateTime.fromISO($(this).val()).toUTC().toISO();
             });
-                        
-            $("#threadItemTemplate").on("input", "textarea", function () {
-                const parent = $(this).parent();
+            
+            $(".thread-item-textarea").on("input", function () {
+                const parent = $(this).parent().parent();
                 const idx = parent.attr("data-thread-item-idx");
                 const item = currentThread.items[idx];
                 const text = $(this).val();
                 
                 item.text = text;
                 
-                updateCharacterCounter(parent.children(".thread-item-character-counter"), text);
-            }).on("click", ".thread-item-delete-button", function () {
+                updateCharacterCounter($(this).parent().children(".thread-item-character-counter"), text);
+            });
+            
+            $(".thread-item-delete-button").click(function () {
                 if (currentThread.items.length === 1) {
                     $("#error-element").text("Can't remove last post in thread.");
                     $("#error-modal").modal("show");
@@ -192,7 +198,7 @@
                     return;
                 }
                 
-                const idx = $(this).parent().attr("data-thread-item-idx");
+                const idx = $(this).parent().parent().attr("data-thread-item-idx");
 
                 currentThread.items.splice(idx, 1);
                 
