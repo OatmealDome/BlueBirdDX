@@ -24,6 +24,12 @@ public class UploadedMedia
         set;
     }
 
+    public string AltText
+    {
+        get;
+        set;
+    }
+
     public string MimeType
     {
         get;
