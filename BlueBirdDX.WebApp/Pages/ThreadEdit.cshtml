@@ -56,10 +56,30 @@
 <!-- Templates -->
 <div class="d-none">
     <div id="threadItemTemplate">
-        <div class="input-group">
+        <div class="input-group mb-3">
             <textarea class="form-control thread-item-textarea" rows="4"></textarea>
             <span class="input-group-text thread-item-character-counter">0</span>
+            <button class="btn btn-outline-secondary thread-item-attach-button" type="button">📎️</button>
             <button class="btn btn-outline-secondary thread-item-delete-button" type="button">🗑️</button>
+        </div>
+        <div class="attachments">
+        </div>
+    </div>
+</div>
+
+<!-- Attach modal -->
+<div id="attach-modal" class="modal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Attach</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <select id="mediaSelect" class="form-select">
+                </select>
+                <button id="attachButton" class="btn btn-primary">Save</button>
+            </div>
         </div>
     </div>
 </div>
@@ -89,6 +109,9 @@
     <script>
         let currentThread = @Html.Raw(JsonSerializer.Serialize(Model.ApiThread));
         let currentThreadId = "@Model.ApiThreadId";
+        
+        let mediaNameCache = @Html.Raw(JsonSerializer.Serialize(Model.MediaNameCache));
+        let currentAttachEditItemIdx = -1;
         
         function updateCharacterCounter(characterCounterSpan, text) {
             const twitterOutput = twitter.parseTweet(text);
@@ -120,6 +143,13 @@
                 inputGroup.children("textarea").val(item.text);
                 
                 updateCharacterCounter(inputGroup.children(".thread-item-character-counter"), item.text);
+                
+                const attachments = clone.children(".attachments");
+                
+                for (const i in item.attached_media) {
+                    const mediaId = item.attached_media[i];
+                    attachments.append("<p class=\"mb-0\">📷 " + mediaNameCache[mediaId] + " <a href=\"#\" class=\"media-attachment-remove\" data-media-idx=\"" + i + "\">(remove)</a></p>");
+                }
                 
                 clone.appendTo(container);
             }
@@ -190,6 +220,39 @@
                 updateCharacterCounter($(this).parent().children(".thread-item-character-counter"), text);
             });
             
+            $(".thread-item-attach-button").click(function () {
+                currentAttachEditItemIdx = $(this).parent().parent().attr("data-thread-item-idx");
+                
+                if (currentThread.items[currentAttachEditItemIdx].attached_media.length >= 4) {
+                    $("#error-element").text("Can't exceed attached media limit.");
+                    $("#error-modal").modal("show");
+                    
+                    return;
+                }
+                
+                $.ajax({
+                    method: "GET",
+                    url: "/api/v1/media",
+                }).done(function (results) {
+                    mediaNameCache = {};
+                    
+                    const select = $("#mediaSelect");
+                    
+                    select.empty();
+                    
+                    for (const media of results) {
+                        mediaNameCache[media.id] = media.name;
+                        
+                        select.append("<option value=\"" + media.id + "\">" + media.name + "</option>");
+                    }
+                    
+                    $("#attach-modal").modal("show");
+                }).fail(function () {
+                    $("#error-element").text("Failed to fetch list of media.");
+                    $("#error-modal").modal("show");
+                });
+            });
+            
             $(".thread-item-delete-button").click(function () {
                 if (currentThread.items.length === 1) {
                     $("#error-element").text("Can't remove last post in thread.");
@@ -205,10 +268,31 @@
                 rebuildPostsContainer();
             });
             
+            $(".attachments").on("click", "a.media-attachment-remove", function () {
+                const itemIdx = $(this).parent().parent().parent().attr("data-thread-item-idx");
+                const mediaIdx = $(this).attr("data-media-idx");
+                
+                console.log($(this).parent());
+                
+                currentThread.items[itemIdx].attached_media.splice(mediaIdx, 1);
+                
+                rebuildPostsContainer();
+            });
+            
             $("#addPostButton").click(function () {
                 currentThread.items.push({
-                    text: ""
+                    text: "",
+                    attached_media: []
                 });
+                
+                rebuildPostsContainer();
+            });
+            
+            $("#attachButton").click(function () {
+                const selectedItem = $("#mediaSelect").find(":selected").val();
+                currentThread.items[currentAttachEditItemIdx].attached_media.push(selectedItem);
+                
+                $("#attach-modal").modal("hide");
                 
                 rebuildPostsContainer();
             });

@@ -1,3 +1,4 @@
+using BlueBirdDX.Common.Media;
 using BlueBirdDX.Common.Post;
 using BlueBirdDX.WebApp.Api;
 using BlueBirdDX.WebApp.Services;
@@ -24,6 +25,12 @@ public class ThreadEditModel : PageModel
         set;
     }
 
+    public Dictionary<string, string> MediaNameCache
+    {
+        get;
+        set;
+    }
+
     public ThreadEditModel(DatabaseService databaseService)
     {
         _database = databaseService;
@@ -31,6 +38,8 @@ public class ThreadEditModel : PageModel
 
     public IActionResult OnGet(string threadId)
     {
+        MediaNameCache = new Dictionary<string, string>();
+        
         if (threadId == "new")
         {
             ApiThread = new PostThreadApi();
@@ -48,6 +57,17 @@ public class ThreadEditModel : PageModel
             if (realThread == null)
             {
                 return NotFound();
+            }
+            
+            MediaNameCache = new Dictionary<string, string>();
+
+            List<ObjectId> mediaIds = realThread.Items.SelectMany(i => i.AttachedMedia).Distinct().ToList();
+            IEnumerable<UploadedMedia> allMedia =
+                _database.UploadedMediaCollection.AsQueryable().Where(m => mediaIds.Contains(m._id));
+
+            foreach (UploadedMedia media in allMedia)
+            {
+                MediaNameCache[media._id.ToString()] = media.Name;
             }
 
             ApiThread = new PostThreadApi(realThread);
