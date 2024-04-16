@@ -12,8 +12,10 @@ public class AttachmentCache
 {
     private readonly RemoteStorage _remoteStorage;
     private readonly IMongoCollection<UploadedMedia> _uploadedMediaCollection;
-    
-    private readonly Dictionary<ObjectId, byte[]> _mediaCache = new Dictionary<ObjectId, byte[]>();
+
+    private readonly Dictionary<ObjectId, UploadedMedia>
+        _mediaDocumentCache = new Dictionary<ObjectId, UploadedMedia>();
+    private readonly Dictionary<ObjectId, byte[]> _mediaDataCache = new Dictionary<ObjectId, byte[]>();
     
     public AttachmentCache()
     {
@@ -24,19 +26,27 @@ public class AttachmentCache
         
         _uploadedMediaCollection = DatabaseManager.Instance.GetCollection<UploadedMedia>("media");
     }
-    
-    public byte[] GetMedia(ObjectId mediaId)
+
+    public UploadedMedia GetMediaDocument(ObjectId mediaId)
     {
-        return _mediaCache[mediaId];
+        return _mediaDocumentCache[mediaId];
+    }
+    
+    public byte[] GetMediaData(ObjectId mediaId)
+    {
+        return _mediaDataCache[mediaId];
     }
     
     public async Task AddMediaToCache(ObjectId mediaId)
     {
-        if (_mediaCache.ContainsKey(mediaId))
+        if (_mediaDocumentCache.ContainsKey(mediaId))
         {
             return;
         }
+        
+        UploadedMedia media = _uploadedMediaCollection.AsQueryable().FirstOrDefault(m => m._id == mediaId)!;
+        _mediaDocumentCache[mediaId] = media;
 
-        _mediaCache[mediaId] = await _remoteStorage.DownloadFile(mediaId.ToString());
+        _mediaDataCache[mediaId] = await _remoteStorage.DownloadFile(mediaId.ToString());
     }
 }

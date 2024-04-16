@@ -148,7 +148,7 @@ public class PostThreadManager
 
                 foreach (ObjectId mediaId in item.AttachedMedia)
                 {
-                    uploadedMediaIds.Add(await client.UploadImage(attachmentCache.GetMedia(mediaId)));
+                    uploadedMediaIds.Add(await client.UploadImage(attachmentCache.GetMediaData(mediaId)));
                 }
 
                 twitterMediaIds = uploadedMediaIds.ToArray();
