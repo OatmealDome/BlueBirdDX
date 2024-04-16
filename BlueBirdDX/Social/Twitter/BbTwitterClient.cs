@@ -4,6 +4,7 @@ using BlueBirdDX.Common.Account;
 using Tweetinvi;
 using Tweetinvi.Core.Web;
 using Tweetinvi.Models;
+using Tweetinvi.Parameters;
 using HttpMethod = Tweetinvi.Models.HttpMethod;
 
 namespace BlueBirdDX.Social.Twitter;
@@ -19,9 +20,17 @@ public class BbTwitterClient
             account.AccessTokenSecret);
     }
 
-    public async Task<string> UploadImage(byte[] image)
+    public async Task<string> UploadImage(byte[] image, string? altText = null)
     {
         IMedia media = await _internalClient.Upload.UploadTweetImageAsync(image);
+
+        if (altText != null)
+        {
+            await _internalClient.Upload.AddMediaMetadataAsync(new AddMediaMetadataParameters(media.Id)
+            {
+                AltText = altText
+            });
+        }
 
         return media.Id.ToString()!;
     }
