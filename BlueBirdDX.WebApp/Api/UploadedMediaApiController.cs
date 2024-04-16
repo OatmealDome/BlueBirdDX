@@ -35,8 +35,13 @@ public class UploadedMediaApiController : ControllerBase
     [HttpPost]
     [Route("/api/v1/media")]
     [ProducesResponseType(typeof(UploadedMediaMiniApi), StatusCodes.Status200OK)]
-    public IActionResult PostMedia(IFormFile file)
+    public IActionResult PostMedia([FromForm] string name, IFormFile file, [FromForm] string? altText = null)
     {
+        if (name == "")
+        {
+            return Problem("Name cannot be empty", statusCode: 400);
+        }
+        
         using MemoryStream memoryStream = new MemoryStream();
         
         file.CopyTo(memoryStream);
@@ -58,7 +63,8 @@ public class UploadedMediaApiController : ControllerBase
         UploadedMedia media = new UploadedMedia()
         {
             SchemaVersion = UploadedMedia.LatestSchemaVersion,
-            Name = file.FileName,
+            Name = name,
+            AltText = altText,
             MimeType = format.DefaultMimeType,
             CreationTime = DateTime.UtcNow
         };
