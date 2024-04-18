@@ -35,4 +35,10 @@ public class AccountGroup
         get;
         set;
     }
+
+    public MastodonAccount? Mastodon
+    {
+        get;
+        set;
+    }
 }
