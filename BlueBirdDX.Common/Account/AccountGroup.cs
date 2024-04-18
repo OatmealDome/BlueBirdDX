@@ -29,4 +29,10 @@ public class AccountGroup
         get;
         set;
     }
+
+    public BlueskyAccount? Bluesky
+    {
+        get;
+        set;
+    }
 }
