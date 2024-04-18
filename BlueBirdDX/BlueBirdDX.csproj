@@ -22,6 +22,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <PackageReference Include="Mastonet" Version="3.1.1" />
       <PackageReference Include="MongoDB.Driver" Version="2.24.0" />
       <PackageReference Include="oatmealdome.airship" Version="2.0.0" />
       <PackageReference Include="Quartz" Version="3.8.1" />
