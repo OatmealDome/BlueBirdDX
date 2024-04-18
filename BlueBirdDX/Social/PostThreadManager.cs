@@ -9,6 +9,12 @@ using BlueBirdDX.Database;
 using BlueBirdDX.Social.Twitter;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using OatmealDome.Airship.ATProtocol.Lexicon.Types;
+using OatmealDome.Airship.ATProtocol.Lexicon.Types.Blob;
+using OatmealDome.Airship.Bluesky;
+using OatmealDome.Airship.Bluesky.Embed;
+using OatmealDome.Airship.Bluesky.Embed.Image;
+using OatmealDome.Airship.Bluesky.Feed;
 using Serilog;
 using Serilog.Core;
 
@@ -118,6 +124,21 @@ public class PostThreadManager
                 AppendError(e.ToString());
             }
         }
+        
+        if (group.Bluesky != null)
+        {
+            try
+            {
+                await PostToBluesky(postThread, group.Bluesky, attachmentCache);
+            }
+            catch (Exception e)
+            {
+                LogContext.Error(e, "Failed to post thread {id} to Bluesky", postThread._id.ToString());
+                
+                failed = true;
+                AppendError(e.ToString());
+            }
+        }
 
         PostThreadState outState = PostThreadState.Sent;
         
@@ -162,6 +183,71 @@ public class PostThreadManager
             }
 
             previousId = await client.Tweet(item.Text, replyToTweetId: previousId, mediaIds: twitterMediaIds);
+        }
+    }
+
+    private async Task PostToBluesky(PostThread postThread, BlueskyAccount account, AttachmentCache attachmentCache)
+    {
+        BlueskyClient client = new BlueskyClient();
+        await client.Server_CreateSession(account.Identifier, account.Password);
+        
+        StrongRef? rootPost = null;
+        StrongRef? previousPost = null;
+        
+        foreach (PostThreadItem item in postThread.Items)
+        {
+            Post post = new Post()
+            {
+                Text = item.Text,
+                CreatedAt = DateTime.UtcNow
+            };
+            
+            if (previousPost != null)
+            {
+                post.Reply = new PostReply()
+                {
+                    Root = rootPost!,
+                    Parent = previousPost
+                };
+            }
+
+            GenericEmbed? embed = null;
+            
+            if (item.AttachedMedia.Count > 0)
+            {
+                List<EmbeddedImage> images = new List<EmbeddedImage>();
+                
+                foreach (ObjectId mediaId in item.AttachedMedia)
+                {
+                    UploadedMedia media = attachmentCache.GetMediaDocument(mediaId);
+                    byte[] mediaData = attachmentCache.GetMediaData(mediaId);
+
+                    GenericBlob blob = await client.Repo_CreateBlob(mediaData, media.MimeType);
+                    
+                    images.Add(new EmbeddedImage()
+                    {
+                        Image = blob,
+                        AltText = media.AltText
+                    });
+                }
+
+                embed = new ImagesEmbed()
+                {
+                    Images = images
+                };
+            }
+
+            if (embed != null)
+            {
+                post.Embed = embed;
+            }
+
+            previousPost = await client.Post_Create(post);
+
+            if (rootPost == null)
+            {
+                rootPost = previousPost;
+            }
         }
     }
 }
