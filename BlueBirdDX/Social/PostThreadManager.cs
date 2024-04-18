@@ -7,6 +7,8 @@ using BlueBirdDX.Config;
 using BlueBirdDX.Config.Storage;
 using BlueBirdDX.Database;
 using BlueBirdDX.Social.Twitter;
+using Mastonet;
+using Mastonet.Entities;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using OatmealDome.Airship.ATProtocol.Lexicon.Types;
@@ -139,6 +141,21 @@ public class PostThreadManager
                 AppendError(e.ToString());
             }
         }
+        
+        if (group.Mastodon != null)
+        {
+            try
+            {
+                await PostToMastodon(postThread, group.Mastodon, attachmentCache);
+            }
+            catch (Exception e)
+            {
+                LogContext.Error(e, "Failed to post thread {id} to Mastodon", postThread._id.ToString());
+                
+                failed = true;
+                AppendError(e.ToString());
+            }
+        }
 
         PostThreadState outState = PostThreadState.Sent;
         
@@ -248,6 +265,33 @@ public class PostThreadManager
             {
                 rootPost = previousPost;
             }
+        }
+    }
+    
+    private async Task PostToMastodon(PostThread postThread, MastodonAccount account, AttachmentCache attachmentCache)
+    {
+        MastodonClient client = new MastodonClient(account.InstanceUrl, account.AccessToken);
+
+        Status? previousStatus = null;
+
+        foreach (PostThreadItem item in postThread.Items)
+        {
+            List<Attachment> attachments = new List<Attachment>();
+
+            foreach (ObjectId mediaId in item.AttachedMedia)
+            {
+                UploadedMedia media = attachmentCache.GetMediaDocument(mediaId);
+                byte[] mediaData = attachmentCache.GetMediaData(mediaId);
+
+                using MemoryStream mediaStream = new MemoryStream(mediaData);
+                
+                attachments.Add(await client.UploadMedia(mediaStream, description: media.AltText));
+            }
+
+            Status status = await client.PublishStatus(item.Text, replyStatusId: previousStatus?.Id,
+                mediaIds: attachments.Count > 0 ? attachments.Select(a => a.Id) : null);
+
+            previousStatus = status;
         }
     }
 }
