@@ -89,9 +89,11 @@ public class PostThreadApiController : ControllerBase
 
         foreach (PostThreadItemApi item in inState.Items)
         {
-            if (item.AttachedMedia.Count > 4)
+            int attachmentCount = item.AttachedMedia.Count + (item.QuotedPost != null ? 0 : 1);
+
+            if (attachmentCount > 4)
             {
-                error = "Thread has too many attached media";
+                error = "Thread has too many attachments";
                 return false;
             }
             

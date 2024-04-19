@@ -70,7 +70,8 @@ public class PostThreadApi
         realThread.Items = Items.Select(p => new PostThreadItem()
         {
             Text = p.Text,
-            AttachedMedia = p.AttachedMedia.Select(m => ObjectId.Parse(m)).ToList()
+            AttachedMedia = p.AttachedMedia.Select(m => ObjectId.Parse(m)).ToList(),
+            QuotedPost = p.QuotedPost
         }).ToList();
     }
 }

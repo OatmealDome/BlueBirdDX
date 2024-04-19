@@ -19,15 +19,24 @@ public class PostThreadItemApi
         set;
     }
 
+    [JsonPropertyName("quoted_post")]
+    public string? QuotedPost
+    {
+        get;
+        set;
+    }
+
     public PostThreadItemApi()
     {
         Text = "";
         AttachedMedia = new List<string>();
+        QuotedPost = null;
     }
     
     public PostThreadItemApi(PostThreadItem realItem)
     {
         Text = realItem.Text;
         AttachedMedia = realItem.AttachedMedia.Select(m => m.ToString()).ToList();
+        QuotedPost = realItem.QuotedPost;
     }
 }
