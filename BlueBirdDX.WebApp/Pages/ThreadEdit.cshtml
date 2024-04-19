@@ -79,9 +79,27 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <select id="mediaSelect" class="form-select">
-                </select>
-                <button id="attachButton" class="btn btn-primary">Save</button>
+                <ul class="nav nav-tabs" id="attachTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="media-tab" data-bs-toggle="tab" data-bs-target="#media-tab-pane" type="button" role="tab">Media</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="post-tab" data-bs-toggle="tab" data-bs-target="#post-tab-pane" type="button" role="tab">Post</button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content" id="attachTabsContent">
+                    <div class="tab-pane fade show active" id="media-tab-pane" role="tabpanel" tabindex="0">
+                        <select id="mediaSelect" class="form-select">
+                        </select>
+                        <button id="attachMediaButton" class="btn btn-primary">Save</button>
+                    </div>
+                    <div class="tab-pane fade" id="post-tab-pane" role="tabpanel" tabindex="0">
+                        <label for="postUrlInput" class="form-label">Name</label>
+                        <input id="postUrlInput" class="form-control" type="text">
+                        <button id="attachPostButton" class="btn btn-primary">Save</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -128,6 +146,18 @@
             }
         }
         
+        function checkDidReachAttachmentLimit(item) {
+            let attachmentCount = 0;
+            
+            attachmentCount += item.attached_media.length;
+            
+            if (item.quoted_post != null) {
+                attachmentCount += 1;
+            }
+            
+            return attachmentCount >= 4;
+        }
+        
         function rebuildPostsContainer() {
             const container = $("#postsContainer");
             
@@ -148,6 +178,10 @@
                 updateCharacterCounter(inputGroup.children(".thread-item-character-counter"), item.text);
                 
                 const attachments = clone.children(".attachments");
+                
+                if (item.quoted_post !== null) {
+                    attachments.append("<p class=\"mb-0\">💬 " + item.quoted_post + " <a href=\"#\" class=\"post-attachment-remove\">(remove)</a></p>");
+                }
                 
                 for (const i in item.attached_media) {
                     const mediaId = item.attached_media[i];
@@ -239,7 +273,17 @@
             $(".thread-item-attach-button").click(function () {
                 currentAttachEditItemIdx = $(this).parent().parent().attr("data-thread-item-idx");
                 
-                if (currentThread.items[currentAttachEditItemIdx].attached_media.length >= 4) {
+                const item = currentThread.items[currentAttachEditItemIdx];
+                
+                let attachmentCount = 0;
+                
+                attachmentCount += item.attached_media.length;
+                
+                if (item.quoted_post != null) {
+                    attachmentCount += 1;
+                }
+                
+                if (attachmentCount >= 4) {
                     $("#error-element").text("Can't exceed attached media limit.");
                     $("#error-modal").modal("show");
                     
@@ -295,18 +339,35 @@
                 rebuildPostsContainer();
             });
             
+            $(".attachments").on("click", "a.post-attachment-remove", function () {
+                const itemIdx = $(this).parent().parent().parent().attr("data-thread-item-idx");
+                
+                currentThread.items[itemIdx].quoted_post = null;
+                
+                rebuildPostsContainer();
+            });
+            
             $("#addPostButton").click(function () {
                 currentThread.items.push({
                     text: "",
-                    attached_media: []
+                    attached_media: [],
+                    quoted_post: null
                 });
                 
                 rebuildPostsContainer();
             });
             
-            $("#attachButton").click(function () {
+            $("#attachMediaButton").click(function () {
                 const selectedItem = $("#mediaSelect").find(":selected").val();
                 currentThread.items[currentAttachEditItemIdx].attached_media.push(selectedItem);
+                
+                $("#attach-modal").modal("hide");
+                
+                rebuildPostsContainer();
+            });
+            
+            $("#attachPostButton").click(function() {
+                currentThread.items[currentAttachEditItemIdx].quoted_post = $("#postUrlInput").val();
                 
                 $("#attach-modal").modal("hide");
                 
