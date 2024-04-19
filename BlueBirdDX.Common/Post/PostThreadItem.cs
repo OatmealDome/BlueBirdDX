@@ -15,4 +15,10 @@ public class PostThreadItem
         get;
         set;
     }
+
+    public string? QuotedPost
+    {
+        get;
+        set;
+    }
 }
