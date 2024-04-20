@@ -159,7 +159,7 @@
                 if (pasteMode === 0) {
                     const files = $("#filePicker").prop('files');
                     
-                    if (!files || files.length < 0) {
+                    if (!files || files.length <= 0) {
                         showErrorModal("No files selected.");
                         return;
                     }
