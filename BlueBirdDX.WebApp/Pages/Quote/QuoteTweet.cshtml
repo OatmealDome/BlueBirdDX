@@ -1,0 +1,28 @@
+@page "/quote/tweet"
+@model QuoteTweetModel
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Quoted Tweet</title>
+    <style>
+        #inner {
+            /* 5px only on the sides because the embed comes within its own 10px margin */
+            margin: 15px 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="inner">
+        <blockquote class="twitter-tweet">
+            <a href="@Model.QuotedUrl"></a>
+        </blockquote>
+    </div>
+    <script src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+</body>
+</html>
