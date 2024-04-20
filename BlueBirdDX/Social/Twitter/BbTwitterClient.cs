@@ -35,7 +35,7 @@ public class BbTwitterClient
         return media.Id.ToString()!;
     }
     
-    public async Task<string> Tweet(string text, string? replyToTweetId = null, string[]? mediaIds = null)
+    public async Task<string> Tweet(string text, string? quotedTweetId = null, string? replyToTweetId = null, string[]? mediaIds = null)
     {
         TweetV2RequestMedia? tweetRequestMedia = null;
 
@@ -61,7 +61,8 @@ public class BbTwitterClient
         {
             Text = text,
             Media = tweetRequestMedia,
-            Reply = tweetRequestReply
+            Reply = tweetRequestReply,
+            QuotedTweetId = quotedTweetId
         };
 
         ITwitterResult result = await _internalClient.Execute.AdvanceRequestAsync(request =>

@@ -26,4 +26,12 @@ public class TweetV2Request
         get;
         set;
     }
+    
+    [JsonPropertyName("quote_tweet_id")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? QuotedTweetId
+    {
+        get;
+        set;
+    }
 }
