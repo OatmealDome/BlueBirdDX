@@ -77,8 +77,13 @@ public class PostThreadApiController : ControllerBase
 
         if (inState.State == PostThreadState.Enqueued && DateTime.UtcNow > inState.ScheduledTime)
         {
-            error = "Scheduled time is in past";
-            return false;
+            TimeSpan span = DateTime.UtcNow - inState.ScheduledTime;
+
+            if (span.TotalMinutes > 4.0d)
+            {
+                error = "Scheduled time is too far in the past";
+                return false;   
+            }
         }
 
         if (inState.Items.Count == 0)
