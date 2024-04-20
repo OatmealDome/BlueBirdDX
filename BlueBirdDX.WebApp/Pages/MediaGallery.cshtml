@@ -45,7 +45,21 @@
                         <label for="nameInput" class="form-label">Name</label>
                         <input id="nameInput" class="form-control" type="text">
                     </div>
+                    <label class="form-label mb-0">Data Source</label>
                     <div>
+                        <div class="form-check form-check-inline">
+                            <input id="sourceRadioFile" class="form-check-input" type="radio" name="stateRadio" value="0" checked>
+                            <label class="form-check-label" for="sourceRadioFile">File</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input id="sourceRadioClipboard" class="form-check-input" type="radio" name="stateRadio" value="1">
+                            <label class="form-check-label" for="sourceRadioClipboard">Clipboard</label>
+                        </div>
+                    </div>
+                    <div id="clipboardSource" class="d-none">
+                        <p class="mb-0">Pasted file: <span id="clipboardState">not found</span></p>
+                    </div>
+                    <div id="fileSource">
                         <label for="filePicker" class="form-label">Data</label>
                         <input id="filePicker" type="file" class="form-control"/>
                     </div>
@@ -95,6 +109,9 @@
 
 @section Scripts {
     <script>
+        let file = null;
+        let pasteMode = 0;
+        
         function showErrorModal(errorMessage) {
             $("#error-element").text("An error occurred. " + errorMessage);
             $("#error-modal").modal("show");
@@ -124,20 +141,41 @@
                 $("#upload-modal").modal("show");
             });
             
-            $("#uploadButton").click(function () {
-                const files = $("#filePicker").prop('files');
+            $("input[type=radio]").change(function () {
+                const val = Number($(this).val());
                 
-                if (!files || files.length < 0) {
+                pasteMode = val;
+                
+                if (val === 0) {
+                    $("#clipboardSource").addClass("d-none");
+                    $("#fileSource").removeClass("d-none");
+                } else {
+                    $("#clipboardSource").removeClass("d-none");
+                    $("#fileSource").addClass("d-none");
+                }
+            });
+            
+            $("#uploadButton").click(function () {
+                if (pasteMode === 0) {
+                    const files = $("#filePicker").prop('files');
+                    
+                    if (!files || files.length < 0) {
+                        showErrorModal("No files selected.");
+                        return;
+                    }
+                    
+                    file = files[0];
+                }
+                
+                if (file === null) {
                     showErrorModal("No files selected.");
                     return;
                 }
-                
+
                 $("#upload-modal").modal("hide");
                 
                 $("#uploading-modal").modal({backdrop: 'static', keyboard: false});
                 $("#uploading-modal").modal("show");
-                
-                const file = files[0];
                 
                 const formData = new FormData();
                 formData.set("name", $("#nameInput").val());
@@ -155,6 +193,24 @@
                 }).fail(function () {
                     showErrorModal("Failed to upload file.");
                 });
+            });
+            
+            $(window).on('paste', function (e) {
+                const files = e.originalEvent.clipboardData.files;
+                
+                if (!files || files.length <= 0) {
+                    return;
+                }
+                
+                const targetFile = files[0];
+                
+                if (!targetFile.type.startsWith("image/")) {
+                    return;
+                }
+                
+                file = targetFile;
+                
+                $("#clipboardState").text("OK!");
             });
         });
     </script>
