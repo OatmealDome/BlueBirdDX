@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using BlueBirdDX.Config.Database;
 using BlueBirdDX.Config.Logging;
 using BlueBirdDX.Config.Storage;
+using BlueBirdDX.Config.WebDriver;
 
 namespace BlueBirdDX.Config;
 
@@ -29,6 +30,13 @@ public class BbConfig
 
     [JsonPropertyName("RemoteStorage")]
     public RemoteStorageConfig RemoteStorage
+    {
+        get;
+        set;
+    }
+
+    [JsonPropertyName("WebDriver")]
+    public WebDriverConfig WebDriver
     {
         get;
         set;
