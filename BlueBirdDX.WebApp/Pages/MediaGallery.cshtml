@@ -98,6 +98,7 @@
         function showErrorModal(errorMessage) {
             $("#error-element").text("An error occurred. " + errorMessage);
             $("#error-modal").modal("show");
+            $("#upload-modal").modal("hide");
             $("#uploading-modal").modal("hide");
         }
         
