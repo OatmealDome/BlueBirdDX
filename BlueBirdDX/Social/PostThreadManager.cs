@@ -90,6 +90,14 @@ public class PostThreadManager
     {
         AttachmentCache attachmentCache = new AttachmentCache();
         
+        foreach (PostThreadItem item in postThread.Items)
+        {
+            if (item.QuotedPost != null)
+            {
+                await attachmentCache.AddQuotedPostToCache(item.QuotedPost);
+            }
+        }
+        
         foreach (ObjectId mediaId in postThread.Items.SelectMany(i => i.AttachedMedia))
         {
             await attachmentCache.AddMediaToCache(mediaId);
@@ -179,6 +187,15 @@ public class PostThreadManager
 
         foreach (PostThreadItem item in postThread.Items)
         {
+            string? quotedTweetId = null;
+            
+            if (item.QuotedPost != null)
+            {
+                string[] splitUrl = item.QuotedPost.Split('/');
+
+                quotedTweetId = splitUrl[^1];
+            }
+            
             string[]? twitterMediaIds = null;
 
             if (item.AttachedMedia.Count > 0)
@@ -199,7 +216,8 @@ public class PostThreadManager
                 twitterMediaIds = uploadedMediaIds.ToArray();
             }
 
-            previousId = await client.Tweet(item.Text, replyToTweetId: previousId, mediaIds: twitterMediaIds);
+            previousId = await client.Tweet(item.Text, quotedTweetId: quotedTweetId, replyToTweetId: previousId,
+                mediaIds: twitterMediaIds);
         }
     }
 
@@ -230,24 +248,37 @@ public class PostThreadManager
 
             GenericEmbed? embed = null;
             
-            if (item.AttachedMedia.Count > 0)
+            List<EmbeddedImage> images = new List<EmbeddedImage>();
+
+            if (item.QuotedPost != null)
             {
-                List<EmbeddedImage> images = new List<EmbeddedImage>();
+                byte[] quotedPostData = attachmentCache.GetQuotedPostData(item.QuotedPost);
+
+                GenericBlob blob = await client.Repo_CreateBlob(quotedPostData, "image/png");
                 
-                foreach (ObjectId mediaId in item.AttachedMedia)
+                images.Add(new EmbeddedImage()
                 {
-                    UploadedMedia media = attachmentCache.GetMediaDocument(mediaId);
-                    byte[] mediaData = attachmentCache.GetMediaData(mediaId);
+                    Image = blob,
+                    AltText = "A screenshot of a tweet on Twitter."
+                });
+            }
+            
+            foreach (ObjectId mediaId in item.AttachedMedia)
+            {
+                UploadedMedia media = attachmentCache.GetMediaDocument(mediaId);
+                byte[] mediaData = attachmentCache.GetMediaData(mediaId);
 
-                    GenericBlob blob = await client.Repo_CreateBlob(mediaData, media.MimeType);
-                    
-                    images.Add(new EmbeddedImage()
-                    {
-                        Image = blob,
-                        AltText = media.AltText
-                    });
-                }
+                GenericBlob blob = await client.Repo_CreateBlob(mediaData, media.MimeType);
+                
+                images.Add(new EmbeddedImage()
+                {
+                    Image = blob,
+                    AltText = media.AltText
+                });
+            }
 
+            if (images.Count > 0)
+            {
                 embed = new ImagesEmbed()
                 {
                     Images = images
@@ -277,6 +308,16 @@ public class PostThreadManager
         foreach (PostThreadItem item in postThread.Items)
         {
             List<Attachment> attachments = new List<Attachment>();
+            
+            if (item.QuotedPost != null)
+            {
+                byte[] quotedPostData = attachmentCache.GetQuotedPostData(item.QuotedPost);
+                
+                using MemoryStream quotedPostStream = new MemoryStream(quotedPostData);
+
+                attachments.Add(await client.UploadMedia(quotedPostStream,
+                    description: "A screenshot of a Tweet on Twitter."));
+            }
 
             foreach (ObjectId mediaId in item.AttachedMedia)
             {
