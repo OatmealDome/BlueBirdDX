@@ -361,7 +361,7 @@ public class PostThreadManager
             }
 
             Status status = await client.PublishStatus(item.Text, replyStatusId: previousStatus?.Id,
-                mediaIds: attachments.Count > 0 ? attachments.Select(a => a.Id) : null);
+                mediaIds: attachments.Count > 0 ? attachments.Select(a => a.Id) : null, visibility: Visibility.Public);
 
             previousStatus = status;
         }
