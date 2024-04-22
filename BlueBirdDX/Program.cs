@@ -8,6 +8,7 @@ using Quartz;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
+using Serilog.Sinks.Grafana.Loki;
 using Serilog.Sinks.Slack;
 
 const string logFormat =
@@ -42,6 +43,12 @@ if (slackWebhookUrl != "")
 {
     logConfig = logConfig.WriteTo.Async(c =>
         c.Slack(BbConfig.Instance.Logging.SlackWebHookUrl, restrictedToMinimumLevel: LogEventLevel.Warning));
+}
+
+string lokiUrl = BbConfig.Instance.Logging.LokiUrl;
+if (lokiUrl != "")
+{
+    logConfig = logConfig.WriteTo.GrafanaLoki(lokiUrl);
 }
 
 Log.Logger = logConfig.CreateLogger();
