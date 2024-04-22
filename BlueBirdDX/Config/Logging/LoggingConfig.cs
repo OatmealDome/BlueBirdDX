@@ -8,8 +8,15 @@ public class LoggingConfig
         set;
     }
 
+    public string LokiUrl
+    {
+        get;
+        set;
+    }
+
     public LoggingConfig()
     {
         SlackWebHookUrl = "";
+        LokiUrl = "";
     }
 }
