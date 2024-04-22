@@ -51,6 +51,19 @@ public class PostThreadManager
         _instance = new PostThreadManager();
     }
 
+    private async Task UpdateThreadState(PostThread thread, PostThreadState state, string? errorMessage = null)
+    {
+        thread.State = state;
+
+        if (state == PostThreadState.Error)
+        {
+            thread.ErrorMessage = errorMessage;
+        }
+
+        await _postThreadCollection.ReplaceOneAsync(
+            Builders<PostThread>.Filter.Eq(p => p._id, thread._id), thread);
+    }
+
     public async Task ProcessPostThreads()
     {
         DateTime referenceNow = DateTime.UtcNow;
@@ -67,20 +80,26 @@ public class PostThreadManager
                 // We should only process threads that are within a 5 minute window of its scheduled time.
                 if (span.TotalMinutes < 5.0d)
                 {
-                    await ProcessPostThread(postThread);
+                    try
+                    {
+                        await ProcessPostThread(postThread);
+                    }
+                    catch (Exception e)
+                    {
+                        LogContext.Error(e, "An exception occurred during processing of thread {id}", postThread._id.ToString());
+
+                        await UpdateThreadState(postThread, PostThreadState.Error,
+                            "An exception occurred during processing.\n\n" + e.ToString());
+                    }
                 }
                 else
                 {
                     LogContext.Error(
                         "Skipping thread {id} because its scheduled time is outside of the margin of error",
                         postThread._id.ToString());
-                    
-                    postThread.State = PostThreadState.Error;
-                    postThread.ErrorMessage =
-                        "Scheduled time is in past but outside of margin of error when processed by PostThreadManager";
 
-                    await _postThreadCollection.ReplaceOneAsync(
-                        Builders<PostThread>.Filter.Eq(p => p._id, postThread._id), postThread);
+                    await UpdateThreadState(postThread, PostThreadState.Error,
+                        "Scheduled time is in past but outside of margin of error when processed by PostThreadManager");
                 }
             }
         }
@@ -166,17 +185,13 @@ public class PostThreadManager
         }
 
         PostThreadState outState = PostThreadState.Sent;
-        
+
         if (failed)
         {
             outState = PostThreadState.Error;
-
-            await _postThreadCollection.UpdateOneAsync(p => p._id == postThread._id,
-                Builders<PostThread>.Update.Set(p => p.ErrorMessage, errorBuilder.ToString()));
         }
 
-        await _postThreadCollection.UpdateOneAsync(p => p._id == postThread._id,
-            Builders<PostThread>.Update.Set(p => p.State, outState));
+        await UpdateThreadState(postThread, outState, errorBuilder.ToString());
     }
 
     private async Task PostToTwitter(PostThread postThread, TwitterAccount account, AttachmentCache attachmentCache)
