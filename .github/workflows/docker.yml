@@ -1,0 +1,37 @@
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Build Core
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./BlueBirdDX/
+          platforms: linux/amd64
+          build-args: |
+            NuGet_SourceUrl=https://nuget.pkg.github.com/oatmealdome/index.json
+            NuGet_SourceUserName=${{ github.repository_owner }}
+            NuGet_SourcePassword=${{ secrets.GHCR_INSTALL_PAT }}
+          tags: |
+            ghcr.io/oatmealdome/bluebirddx:latest
+      - name: Build WebApp
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./BlueBirdDX.WebApp/
+          platforms: linux/amd64
+          build-args: |
+            NuGet_SourceUrl=https://nuget.pkg.github.com/oatmealdome/index.json
+            NuGet_SourceUserName=${{ github.repository_owner }}
+            NuGet_SourcePassword=${{ secrets.GHCR_INSTALL_PAT }}
+          tags: |
+            ghcr.io/oatmealdome/bluebirddxwebapp:latest
