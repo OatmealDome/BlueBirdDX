@@ -107,6 +107,10 @@ public class PostThreadManager
 
     private async Task ProcessPostThread(PostThread postThread)
     {
+        LogContext.Information("Processing thread {id}", postThread._id.ToString());
+
+        LogContext.Information("Creating quoted post screenshots for {id}", postThread._id.ToString());
+        
         AttachmentCache attachmentCache = new AttachmentCache();
         
         foreach (PostThreadItem item in postThread.Items)
@@ -116,13 +120,19 @@ public class PostThreadManager
                 await attachmentCache.AddQuotedPostToCache(item.QuotedPost);
             }
         }
+
+        LogContext.Information("Downloading media for thread {id}", postThread._id.ToString());
         
         foreach (ObjectId mediaId in postThread.Items.SelectMany(i => i.AttachedMedia))
         {
             await attachmentCache.AddMediaToCache(mediaId);
         }
+
+        LogContext.Information("Beginning post process for thread {id}", postThread._id.ToString());
         
         await Post(postThread, attachmentCache);
+        
+        LogContext.Information("Processed thread {id}", postThread._id.ToString());
     }
 
     private async Task Post(PostThread postThread, AttachmentCache attachmentCache)
@@ -141,6 +151,8 @@ public class PostThreadManager
 
         if (group.Twitter != null)
         {
+            LogContext.Information("Posting thread {id} to Twitter", postThread._id.ToString());
+            
             try
             {
                 await PostToTwitter(postThread, group.Twitter, attachmentCache);
@@ -156,6 +168,8 @@ public class PostThreadManager
         
         if (group.Bluesky != null)
         {
+            LogContext.Information("Posting thread {id} to Bluesky", postThread._id.ToString());
+            
             try
             {
                 await PostToBluesky(postThread, group.Bluesky, attachmentCache);
@@ -171,6 +185,8 @@ public class PostThreadManager
         
         if (group.Mastodon != null)
         {
+            LogContext.Information("Posting thread {id} to Mastodon", postThread._id.ToString());
+            
             try
             {
                 await PostToMastodon(postThread, group.Mastodon, attachmentCache);
