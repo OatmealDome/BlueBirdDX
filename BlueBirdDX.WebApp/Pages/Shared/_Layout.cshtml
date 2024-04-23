@@ -1,4 +1,8 @@
-﻿<!DOCTYPE html>
+﻿@using BlueBirdDX.WebApp.Models
+@using Microsoft.AspNetCore.Mvc.TagHelpers
+@inject DatabaseSettings DbSettings
+
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8"/>
@@ -24,6 +28,9 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link text-dark" href="/media">Media Gallery</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-dark" href="@DbSettings.MongoExpressUrl">Mongo Express</a>
                     </li>
                 </ul>
             </div>
