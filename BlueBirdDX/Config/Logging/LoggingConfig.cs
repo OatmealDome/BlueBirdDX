@@ -14,9 +14,16 @@ public class LoggingConfig
         set;
     }
 
+    public bool EnableSelfLog
+    {
+        get;
+        set;
+    }
+
     public LoggingConfig()
     {
         SlackWebHookUrl = "";
         LokiUrl = "";
+        EnableSelfLog = false;
     }
 }

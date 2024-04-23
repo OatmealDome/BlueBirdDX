@@ -7,6 +7,7 @@ using BlueBirdDX.Util;
 using Quartz;
 using Serilog;
 using Serilog.Core;
+using Serilog.Debugging;
 using Serilog.Events;
 using Serilog.Sinks.Grafana.Loki;
 using Serilog.Sinks.Slack;
@@ -48,6 +49,11 @@ string lokiUrl = BbConfig.Instance.Logging.LokiUrl;
 if (lokiUrl != "")
 {
     logConfig = logConfig.WriteTo.GrafanaLoki(lokiUrl);
+}
+
+if (BbConfig.Instance.Logging.EnableSelfLog)
+{
+    SelfLog.Enable(Console.Error);
 }
 
 Log.Logger = logConfig.CreateLogger();
