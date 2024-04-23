@@ -41,8 +41,7 @@ LoggerConfiguration logConfig = new LoggerConfiguration()
 string slackWebhookUrl = BbConfig.Instance.Logging.SlackWebHookUrl;
 if (slackWebhookUrl != "")
 {
-    logConfig = logConfig.WriteTo.Async(c =>
-        c.Slack(BbConfig.Instance.Logging.SlackWebHookUrl, restrictedToMinimumLevel: LogEventLevel.Warning));
+    logConfig = logConfig.WriteTo.Async(c => c.Slack(slackWebhookUrl, restrictedToMinimumLevel: LogEventLevel.Warning));
 }
 
 string lokiUrl = BbConfig.Instance.Logging.LokiUrl;
