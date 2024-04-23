@@ -44,7 +44,10 @@ public class BbConfig
 
     public BbConfig()
     {
-        //
+        Logging = new LoggingConfig();
+        Database = new DatabaseConfig();
+        RemoteStorage = new RemoteStorageConfig();
+        WebDriver = new WebDriverConfig();
     }
 
     public static void Load()
