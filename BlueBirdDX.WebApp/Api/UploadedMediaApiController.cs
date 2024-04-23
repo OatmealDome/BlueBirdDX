@@ -64,7 +64,7 @@ public class UploadedMediaApiController : ControllerBase
         {
             SchemaVersion = UploadedMedia.LatestSchemaVersion,
             Name = name,
-            AltText = altText,
+            AltText = altText ?? "",
             MimeType = format.DefaultMimeType,
             CreationTime = DateTime.UtcNow
         };
