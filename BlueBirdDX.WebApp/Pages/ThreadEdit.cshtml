@@ -193,6 +193,11 @@
         }
         
         function handleAjaxDone(data) {
+            let date = new Date();
+            date.setFullYear(date.getFullYear() + 2);
+            
+            document.cookie = "index-current-group=" + currentThread.target_group + "; path=/; expires=" +  date.toUTCString() + "; samesite=strict";
+                            
             window.location = "/";
         }
         
