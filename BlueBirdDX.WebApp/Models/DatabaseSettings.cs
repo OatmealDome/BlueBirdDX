@@ -13,4 +13,10 @@ public class DatabaseSettings
         get;
         set;
     }
+
+    public string MongoExpressUrl
+    {
+        get;
+        set;
+    }
 }
