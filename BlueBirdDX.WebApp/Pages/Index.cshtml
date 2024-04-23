@@ -3,9 +3,39 @@
 @using BlueBirdDX.WebApp.Services
 @using MongoDB.Driver
 @using BlueBirdDX.Common.Account
+@using Microsoft.AspNetCore.Mvc.TagHelpers
+@using MongoDB.Bson
 @model IndexModel
 @{
     ViewData["Title"] = "Home page";
+
+    const string cookieName = "index-current-group";
+
+    string? defaultGroupId = null;
+
+    if (HttpContext.Request.Cookies.TryGetValue(cookieName, out string? groupCookie))
+    {
+        if (ObjectId.TryParse(groupCookie, out ObjectId groupId))
+        {
+            if (Database.AccountGroupCollection.AsQueryable().FirstOrDefault(g => g._id == groupId) != null)
+            {
+                defaultGroupId = groupCookie;
+            }
+        }
+    }
+
+    if (defaultGroupId == null)
+    {
+        defaultGroupId = Database.AccountGroupCollection.AsQueryable().FirstOrDefault()!._id.ToString();
+        
+        HttpContext.Response.Cookies.Append(cookieName, defaultGroupId, new CookieOptions()
+        {
+            Path = "/",
+            Expires = DateTimeOffset.UtcNow.AddYears(2),
+            IsEssential = true,
+            SameSite = SameSiteMode.Strict,
+        });
+    }
 }
 
 <div class="text-end">
@@ -75,10 +105,17 @@
         
         $(function () {
             $("#groupSelect").change(function () {
+                let date = new Date();
+                date.setFullYear(date.getFullYear() + 2);
+                
+                const groupId = $("#groupSelect").val();
+                
+                document.cookie = "@cookieName" + "=" + groupId + "; path=/; expires=" +  date.toUTCString() + "; samesite=strict";
+                
                 requestRepopulateTable();
             });
             
-            requestRepopulateTable();
+            $("#groupSelect").val("@defaultGroupId").change();
         });
     </script>
 }
