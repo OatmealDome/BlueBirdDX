@@ -48,7 +48,14 @@ if (slackWebhookUrl != "")
 string lokiUrl = BbConfig.Instance.Logging.LokiUrl;
 if (lokiUrl != "")
 {
-    logConfig = logConfig.WriteTo.GrafanaLoki(lokiUrl);
+    logConfig = logConfig.WriteTo.GrafanaLoki(lokiUrl, new []
+    {
+        new LokiLabel()
+        {
+            Key = "app",
+            Value = "BlueBirdDXCore"
+        }
+    });
 }
 
 if (BbConfig.Instance.Logging.EnableSelfLog)
