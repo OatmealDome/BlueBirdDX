@@ -17,6 +17,7 @@ using OatmealDome.Airship.Bluesky;
 using OatmealDome.Airship.Bluesky.Embed;
 using OatmealDome.Airship.Bluesky.Embed.Image;
 using OatmealDome.Airship.Bluesky.Feed;
+using OatmealDome.Airship.Bluesky.Feed.Facets;
 using Serilog;
 using Serilog.Core;
 
@@ -292,6 +293,43 @@ public class PostThreadManager
                     Image = blob,
                     AltText = "A screenshot of a tweet on Twitter."
                 });
+                
+                string textWithSpacingIfNecessary;
+
+                if (item.Text == "")
+                {
+                    textWithSpacingIfNecessary = "";
+                }
+                else
+                {
+                    textWithSpacingIfNecessary = item.Text + "\n\n";
+                }
+                
+                string textWithSpacingAndLink = textWithSpacingIfNecessary + "🐦 original post";
+
+                int linkStartIdx = Encoding.UTF8.GetByteCount(textWithSpacingIfNecessary);
+                int linkEndIdx = Encoding.UTF8.GetByteCount(textWithSpacingAndLink);
+
+                post.Text = textWithSpacingAndLink;
+
+                post.Facets = new List<PostFacet>()
+                {
+                    new PostFacet()
+                    {
+                        Index = new FacetRange()
+                        {
+                            ByteStart = linkStartIdx,
+                            ByteEnd = linkEndIdx
+                        },
+                        Features = new List<GenericFeature>()
+                        {
+                            new LinkFeature()
+                            {
+                                Uri = item.QuotedPost
+                            }
+                        }
+                    }
+                };
             }
             
             foreach (ObjectId mediaId in item.AttachedMedia)
