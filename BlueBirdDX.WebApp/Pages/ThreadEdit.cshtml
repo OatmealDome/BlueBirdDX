@@ -23,6 +23,7 @@
         <input id="nameInput" class="form-control" type="text">
     </div>
     <div>
+        <label for="groupSelect" class="form-label">Target Group</label>
         <select id="groupSelect" class="form-select">
             @foreach (AccountGroup group in Database.AccountGroupCollection.AsQueryable())
             {
