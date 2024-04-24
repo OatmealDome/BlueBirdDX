@@ -376,6 +376,8 @@ public class PostThreadManager
 
         foreach (PostThreadItem item in postThread.Items)
         {
+            string text = item.Text;
+            
             List<Attachment> attachments = new List<Attachment>();
             
             if (item.QuotedPost != null)
@@ -386,6 +388,13 @@ public class PostThreadManager
 
                 attachments.Add(await client.UploadMedia(quotedPostStream,
                     description: "A screenshot of a Tweet on Twitter."));
+
+                if (text == "")
+                {
+                    text = "\n\n";
+                }
+
+                text += "🐦 " + item.QuotedPost;
             }
 
             foreach (ObjectId mediaId in item.AttachedMedia)
@@ -398,7 +407,7 @@ public class PostThreadManager
                 attachments.Add(await client.UploadMedia(mediaStream, description: media.AltText));
             }
 
-            Status status = await client.PublishStatus(item.Text, replyStatusId: previousStatus?.Id,
+            Status status = await client.PublishStatus(text, replyStatusId: previousStatus?.Id,
                 mediaIds: attachments.Count > 0 ? attachments.Select(a => a.Id) : null, visibility: Visibility.Public);
 
             previousStatus = status;
