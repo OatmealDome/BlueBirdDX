@@ -150,7 +150,7 @@ public class PostThreadManager
         AccountGroup group =
             _accountGroupCollection.AsQueryable().FirstOrDefault(a => a._id == postThread.TargetGroup)!;
 
-        if (group.Twitter != null)
+        if (postThread.PostToTwitter && group.Twitter != null)
         {
             LogContext.Information("Posting thread {id} to Twitter", postThread._id.ToString());
             
@@ -167,7 +167,7 @@ public class PostThreadManager
             }
         }
         
-        if (group.Bluesky != null)
+        if (postThread.PostToBluesky && group.Bluesky != null)
         {
             LogContext.Information("Posting thread {id} to Bluesky", postThread._id.ToString());
             
@@ -184,7 +184,7 @@ public class PostThreadManager
             }
         }
         
-        if (group.Mastodon != null)
+        if (postThread.PostToMastodon && group.Mastodon != null)
         {
             LogContext.Information("Posting thread {id} to Mastodon", postThread._id.ToString());
             
