@@ -31,6 +31,21 @@
             }
         </select>
     </div>
+    <label class="form-label mb-0">Target Flags</label>
+    <div>
+        <div class="form-check form-check-inline">
+            <input id="targetCheckTwitter" class="form-check-input" type="checkbox" value="post_to_twitter">
+            <label class="form-check-label" for="stateRadioDraft">Twitter</label>
+        </div>
+        <div class="form-check form-check-inline">
+            <input id="targetCheckBluesky" class="form-check-input" type="checkbox" value="post_to_bluesky">
+            <label class="form-check-label" for="stateRadioDraft">Bluesky</label>
+        </div>
+        <div class="form-check form-check-inline">
+            <input id="targetCheckMastodon" class="form-check-input" type="checkbox" value="post_to_mastodon">
+            <label class="form-check-label" for="stateRadioDraft">Mastodon</label>
+        </div>
+    </div>
     <label class="form-label mb-0">State</label>
     <div>
         <div class="form-check form-check-inline">
@@ -245,7 +260,13 @@
                 } else {
                     $("#timeContainer").removeClass("d-none");
                 }
-            })
+            });
+            
+            $("input[type=checkbox]").change(function () {
+                const val = $(this).val();
+                
+                currentThread[val] = $(this).is(":checked");
+            });
             
             $("#timeInput").change(function () {
                 // convert to UTC, then to a proper ISO 8601 string
@@ -392,6 +413,18 @@
                 // Correct default value to the first group in the dropdown
                 $("#groupSelect").children(":first").attr("selected", "selected");
                 currentThread.target_group = $('#groupSelect').find(":selected").val();
+            }
+            
+            if (currentThread.post_to_twitter) {
+                $("#targetCheckTwitter").prop('checked', true);
+            }
+            
+            if (currentThread.post_to_bluesky) {
+                $("#targetCheckBluesky").prop('checked', true);
+            }
+            
+            if (currentThread.post_to_mastodon) {
+                $("#targetCheckMastodon").prop('checked', true);
             }
             
             let stateSelector;
