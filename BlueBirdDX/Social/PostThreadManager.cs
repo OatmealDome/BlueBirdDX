@@ -389,7 +389,7 @@ public class PostThreadManager
                 attachments.Add(await client.UploadMedia(quotedPostStream,
                     description: "A screenshot of a Tweet on Twitter."));
 
-                if (text == "")
+                if (text != "")
                 {
                     text = "\n\n";
                 }
