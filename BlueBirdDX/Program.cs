@@ -71,6 +71,8 @@ localLogContext.Warning("Starting up");
 
 DatabaseManager.Initialize();
 
+await DatabaseManager.Instance.PerformMigration();
+
 await JobScheduler.Initialize();
 
 PostThreadManager.Initialize();
