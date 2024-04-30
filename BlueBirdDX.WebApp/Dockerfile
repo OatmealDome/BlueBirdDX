@@ -4,7 +4,8 @@ WORKDIR /app
 EXPOSE 8080
 EXPOSE 8081
 
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+# --platform=$BUILDPLATFORM is currently required for arm builds: https://github.com/dotnet/sdk/issues/29892#issuecomment-1691521917
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 ARG NuGet_SourceUrl
 ARG NuGet_SourceUserName
