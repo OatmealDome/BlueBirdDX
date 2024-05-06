@@ -279,8 +279,9 @@ public class PostThreadManager
             }
 
             GenericEmbed? embed = null;
-            
             List<EmbeddedImage> images = new List<EmbeddedImage>();
+            
+            List<PostFacet> facets = new List<PostFacet>();
 
             if (item.QuotedPost != null)
             {
@@ -312,24 +313,21 @@ public class PostThreadManager
 
                 post.Text = textWithSpacingAndLink;
 
-                post.Facets = new List<PostFacet>()
+                facets.Add(new PostFacet()
                 {
-                    new PostFacet()
+                    Index = new FacetRange()
                     {
-                        Index = new FacetRange()
+                        ByteStart = linkStartIdx,
+                        ByteEnd = linkEndIdx
+                    },
+                    Features = new List<GenericFeature>()
+                    {
+                        new LinkFeature()
                         {
-                            ByteStart = linkStartIdx,
-                            ByteEnd = linkEndIdx
-                        },
-                        Features = new List<GenericFeature>()
-                        {
-                            new LinkFeature()
-                            {
-                                Uri = item.QuotedPost
-                            }
+                            Uri = item.QuotedPost
                         }
                     }
-                };
+                });
             }
             
             foreach (ObjectId mediaId in item.AttachedMedia)
@@ -353,10 +351,15 @@ public class PostThreadManager
                     Images = images
                 };
             }
-
+            
             if (embed != null)
             {
                 post.Embed = embed;
+            }
+            
+            if (facets.Count > 0)
+            {
+                post.Facets = facets;
             }
 
             previousPost = await client.Post_Create(post);
