@@ -391,7 +391,7 @@ public class PostThreadManager
 
                 if (text != "")
                 {
-                    text = "\n\n";
+                    text += "\n\n";
                 }
 
                 text += "🐦 " + item.QuotedPost;
