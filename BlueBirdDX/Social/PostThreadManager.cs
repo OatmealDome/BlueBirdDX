@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 using BlueBirdDX.Common.Account;
 using BlueBirdDX.Common.Media;
 using BlueBirdDX.Common.Post;
@@ -25,6 +26,9 @@ namespace BlueBirdDX.Social;
 
 public class PostThreadManager
 {
+    private const string BlueskyUrlRegex =
+        "[(http(s)?):\\/\\/(www\\.)?a-zA-Z0-9@:%._\\+~#=]{2,256}\\.[a-z]{2,6}\\b([-a-zA-Z0-9@:%_\\+.~#?&//=]*)";
+    
     private static PostThreadManager? _instance;
     public static PostThreadManager Instance => _instance!;
 
@@ -282,6 +286,40 @@ public class PostThreadManager
             List<EmbeddedImage> images = new List<EmbeddedImage>();
             
             List<PostFacet> facets = new List<PostFacet>();
+            
+            foreach (Match match in Regex.Matches(post.Text, BlueskyUrlRegex))
+            {
+                int start = Encoding.UTF8.GetByteCount(post.Text, 0, match.Index);
+                int end = Encoding.UTF8.GetByteCount(post.Text, 0, match.Index + match.Length);
+
+                string url;
+
+                if (!match.Value.StartsWith("http"))
+                {
+                    // assume the website is HTTPS capable... it's 2024, so
+                    url = "https://" + match.Value;
+                }
+                else
+                {
+                    url = match.Value;
+                }
+                
+                facets.Add(new PostFacet()
+                {
+                    Index = new FacetRange()
+                    {
+                        ByteStart = start,
+                        ByteEnd = end
+                    },
+                    Features = new List<GenericFeature>()
+                    {
+                        new LinkFeature()
+                        {
+                            Uri = url
+                        }
+                    }
+                });
+            }
 
             if (item.QuotedPost != null)
             {
