@@ -94,6 +94,28 @@ public class PostThreadApiController : ControllerBase
 
         foreach (PostThreadItemApi item in inState.Items)
         {
+            if (item.QuotedPost != null)
+            {
+                if (!Uri.TryCreate(item.QuotedPost, UriKind.Absolute, out Uri uri))
+                {
+                    error = "Invalid quoted post URL";
+                    return false;
+                }
+
+                if (uri.Host != "twitter.com" && uri.Host != "x.com")
+                {
+                    error = "Quoted post URL is not a Twitter URL";
+                    return false;
+                }
+
+                if (!uri.PathAndQuery.Contains("status"))
+                {
+                    error = "Quoted post URL is not a Tweet URL";
+                    return false;
+                }
+            }
+            
+            
             int attachmentCount = item.AttachedMedia.Count + (item.QuotedPost != null ? 0 : 1);
 
             if (attachmentCount > 4)
