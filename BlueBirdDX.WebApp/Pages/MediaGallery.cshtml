@@ -57,7 +57,10 @@
                         </div>
                     </div>
                     <div id="clipboardSource" class="d-none">
-                        <p class="mb-0">Pasted file: <span id="clipboardState">not found</span></p>
+                        <p class="mb-1">Pasted file: <span id="clipboardState">not found</span></p>
+                        <div>
+                            <img id="uploadPreview" style="width:300px;height:100%;background: grey;object-fit: cover;" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=" />
+                        </div>
                     </div>
                     <div id="fileSource">
                         <label for="filePicker" class="form-label">Data</label>
@@ -209,6 +212,14 @@
                 }
                 
                 file = targetFile;
+                
+                const reader = new FileReader();
+                
+                reader.onload = function (evt) {
+                    $("#uploadPreview").attr('src', evt.target.result);
+                };
+                
+                reader.readAsDataURL(file);
                 
                 $("#clipboardState").text("OK!");
             });
