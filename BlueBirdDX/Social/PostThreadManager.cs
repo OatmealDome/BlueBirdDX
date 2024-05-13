@@ -407,6 +407,8 @@ public class PostThreadManager
                 rootPost = previousPost;
             }
         }
+
+        await client.Server_DeleteSession();
     }
     
     private async Task PostToMastodon(PostThread postThread, MastodonAccount account, AttachmentCache attachmentCache)
