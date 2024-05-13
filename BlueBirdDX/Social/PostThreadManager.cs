@@ -27,7 +27,7 @@ namespace BlueBirdDX.Social;
 public class PostThreadManager
 {
     private const string BlueskyUrlRegex =
-        "[(http(s)?):\\/\\/(www\\.)?a-zA-Z0-9@:%._\\+~#=]{2,256}\\.[a-z]{2,6}\\b([-a-zA-Z0-9@:%_\\+.~#?&//=]*)";
+        "(?<root>[(http(s)?):\\/\\/(www\\.)?a-zA-Z0-9@:%._\\+~#=]{2,256}\\.[a-z]{2,6}\\b([-a-zA-Z0-9@:%_\\+.~#?&//=]*))";
     
     private static PostThreadManager? _instance;
     public static PostThreadManager Instance => _instance!;
@@ -39,6 +39,8 @@ public class PostThreadManager
     private readonly IMongoCollection<PostThread> _postThreadCollection;
 
     private readonly RemoteStorage _remoteStorage;
+    
+    private readonly Regex _urlRegex;
 
     private PostThreadManager()
     {
@@ -49,6 +51,8 @@ public class PostThreadManager
         
         _remoteStorage = new RemoteStorage(storageConfig.ServiceUrl, storageConfig.Bucket, storageConfig.AccessKey,
             storageConfig.AccessKeySecret);
+
+        _urlRegex = new Regex(BlueskyUrlRegex, RegexOptions.Compiled | RegexOptions.ExplicitCapture);
     }
     
     public static void Initialize()
@@ -269,7 +273,6 @@ public class PostThreadManager
         {
             Post post = new Post()
             {
-                Text = item.Text,
                 CreatedAt = DateTime.UtcNow
             };
             
@@ -286,40 +289,54 @@ public class PostThreadManager
             List<EmbeddedImage> images = new List<EmbeddedImage>();
             
             List<PostFacet> facets = new List<PostFacet>();
+
+            StringBuilder builder = new StringBuilder();
             
-            foreach (Match match in Regex.Matches(post.Text, BlueskyUrlRegex))
+            foreach (string s in _urlRegex.Split(item.Text))
             {
-                int start = Encoding.UTF8.GetByteCount(post.Text, 0, match.Index);
-                int end = Encoding.UTF8.GetByteCount(post.Text, 0, match.Index + match.Length);
-
-                string url;
-
-                if (!match.Value.StartsWith("http"))
+                if (!_urlRegex.IsMatch(s))
                 {
-                    // assume the website is HTTPS capable... it's 2024, so
-                    url = "https://" + match.Value;
+                    builder.Append(s);
+            
+                    continue;
+                }
+
+                string urlString;
+
+                if (!s.StartsWith("http"))
+                {
+                    urlString = "https://" + s;
                 }
                 else
                 {
-                    url = match.Value;
+                    urlString = s;
                 }
                 
+                int byteStart = Encoding.UTF8.GetByteCount(builder.ToString(), 0, builder.Length);
+                
+                Uri uri = new Uri(urlString);
+        
+                string replacement = $"🔗 {uri.Host}";
+                builder.Append(replacement);
+
                 facets.Add(new PostFacet()
                 {
                     Index = new FacetRange()
                     {
-                        ByteStart = start,
-                        ByteEnd = end
+                        ByteStart = byteStart,
+                        ByteEnd = byteStart + Encoding.UTF8.GetByteCount(replacement)
                     },
                     Features = new List<GenericFeature>()
                     {
                         new LinkFeature()
                         {
-                            Uri = url
+                            Uri = urlString
                         }
                     }
                 });
             }
+
+            post.Text = builder.ToString();
 
             if (item.QuotedPost != null)
             {
