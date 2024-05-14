@@ -8,6 +8,7 @@ using BlueBirdDX.Config;
 using BlueBirdDX.Config.Storage;
 using BlueBirdDX.Database;
 using BlueBirdDX.Social.Twitter;
+using BlueBirdDX.Util;
 using Mastonet;
 using Mastonet.Entities;
 using MongoDB.Bson;
@@ -247,7 +248,7 @@ public class PostThreadManager
                     string altText = attachmentCache.GetMediaAltText(mediaId);
 
                     string uploadedMediaId =
-                        await client.UploadImage(attachmentCache.GetMediaData(mediaId),
+                        await client.UploadImage(attachmentCache.GetMediaData(mediaId, SocialPlatform.Twitter),
                             altText.Length > 0 ? altText : null);
                     
                     uploadedMediaIds.Add(uploadedMediaId);
@@ -387,8 +388,9 @@ public class PostThreadManager
             
             foreach (ObjectId mediaId in item.AttachedMedia)
             {
-                GenericBlob blob = await client.Repo_CreateBlob(attachmentCache.GetMediaData(mediaId),
-                    attachmentCache.GetMediaMimeType(mediaId));
+                GenericBlob blob = await client.Repo_CreateBlob(
+                    attachmentCache.GetMediaData(mediaId, SocialPlatform.Bluesky),
+                    attachmentCache.GetMediaMimeType(mediaId, SocialPlatform.Bluesky));
                 
                 images.Add(new EmbeddedImage()
                 {
@@ -457,7 +459,8 @@ public class PostThreadManager
 
             foreach (ObjectId mediaId in item.AttachedMedia)
             {
-                using MemoryStream mediaStream = new MemoryStream(attachmentCache.GetMediaData(mediaId));
+                using MemoryStream mediaStream =
+                    new MemoryStream(attachmentCache.GetMediaData(mediaId, SocialPlatform.Mastodon));
 
                 attachments.Add(await client.UploadMedia(mediaStream,
                     description: attachmentCache.GetMediaAltText(mediaId)));

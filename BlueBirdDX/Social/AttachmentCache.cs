@@ -1,29 +1,34 @@
-using System.Drawing;
 using System.Net;
-using System.Text;
 using BlueBirdDX.Common.Media;
 using BlueBirdDX.Common.Storage;
 using BlueBirdDX.Config;
 using BlueBirdDX.Config.Storage;
 using BlueBirdDX.Config.WebDriver;
 using BlueBirdDX.Database;
+using BlueBirdDX.Util;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium.Remote;
 using OpenQA.Selenium.Support.UI;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Jpeg;
 
 namespace BlueBirdDX.Social;
 
 public class AttachmentCache
 {
+    // https://github.com/bluesky-social/social-app/blob/f0cd8ab6f46f45c79de5aaf6eb7def782dc99836/src/state/models/media/image.ts#L22
+    private const int BlueskyMaximumImageSize = 976560;
+    
     private readonly RemoteStorage _remoteStorage;
     private readonly IMongoCollection<UploadedMedia> _uploadedMediaCollection;
 
     private readonly Dictionary<ObjectId, UploadedMedia>
         _mediaDocumentCache = new Dictionary<ObjectId, UploadedMedia>();
     private readonly Dictionary<ObjectId, byte[]> _mediaDataCache = new Dictionary<ObjectId, byte[]>();
+    private readonly Dictionary<ObjectId, byte[]> _mediaResizedDataCache = new Dictionary<ObjectId, byte[]>();
 
     private readonly Dictionary<string, byte[]> _quotedPostCache = new Dictionary<string, byte[]>();
     
@@ -37,8 +42,16 @@ public class AttachmentCache
         _uploadedMediaCollection = DatabaseManager.Instance.GetCollection<UploadedMedia>("media");
     }
 
-    public string GetMediaMimeType(ObjectId mediaId)
+    public string GetMediaMimeType(ObjectId mediaId, SocialPlatform platform)
     {
+        if (platform == SocialPlatform.Bluesky)
+        {
+            if (_mediaResizedDataCache.ContainsKey(mediaId))
+            {
+                return "image/jpeg";
+            }
+        }
+        
         return _mediaDocumentCache[mediaId].MimeType;
     }
 
@@ -47,8 +60,16 @@ public class AttachmentCache
         return _mediaDocumentCache[mediaId].AltText;
     }
     
-    public byte[] GetMediaData(ObjectId mediaId)
+    public byte[] GetMediaData(ObjectId mediaId, SocialPlatform platform)
     {
+        if (platform == SocialPlatform.Bluesky)
+        {
+            if (_mediaResizedDataCache.TryGetValue(mediaId, out byte[]? resizedData))
+            {
+                return resizedData;
+            }
+        }
+        
         return _mediaDataCache[mediaId];
     }
     
@@ -62,7 +83,38 @@ public class AttachmentCache
         UploadedMedia media = _uploadedMediaCollection.AsQueryable().FirstOrDefault(m => m._id == mediaId)!;
         _mediaDocumentCache[mediaId] = media;
 
-        _mediaDataCache[mediaId] = await _remoteStorage.DownloadFile(mediaId.ToString());
+        byte[] data = await _remoteStorage.DownloadFile(mediaId.ToString());
+        _mediaDataCache[mediaId] = data;
+
+        if (data.Length > BlueskyMaximumImageSize)
+        {
+            int quality = 100;
+            byte[] resizedData = data;
+
+            while (resizedData.Length > BlueskyMaximumImageSize)
+            {
+                if (quality == 0)
+                {
+                    throw new Exception($"Image {mediaId} is too large and can't be resized to fit on Bluesky");
+                }
+            
+                using MemoryStream inputStream = new MemoryStream(data);
+                using MemoryStream outputStream = new MemoryStream();
+                
+                using Image image = await Image.LoadAsync(inputStream);
+
+                await image.SaveAsync(outputStream, new JpegEncoder()
+                {
+                    Quality = quality
+                });
+
+                quality--;
+
+                resizedData = outputStream.ToArray();
+            }
+
+            _mediaResizedDataCache[mediaId] = resizedData;
+        }
     }
 
     public async Task AddQuotedPostToCache(string url)
@@ -116,7 +168,7 @@ public class AttachmentCache
     
         ICollection<object> collection = (ICollection<object>)remoteWebDriver.ExecuteScript("return [window.outerWidth - window.innerWidth + arguments[0], window.outerHeight - window.innerHeight + arguments[1]]", new object[] { iframeWidth + 30, iframeHeight + 30 });
         IList<object> size = collection.ToList();
-        remoteWebDriver.Manage().Window.Size = new Size((int)(Int64)size[0], (int)(Int64)size[1]);
+        remoteWebDriver.Manage().Window.Size = new System.Drawing.Size((int)(Int64)size[0], (int)(Int64)size[1]);
         
         // Wait an extra 5 seconds to let anything that isn't done loading finish.
         Thread.Sleep(5000);
