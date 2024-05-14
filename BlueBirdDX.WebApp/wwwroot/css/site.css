@@ -17,6 +17,11 @@ html {
   min-height: 100%;
 }
 
+[data-bs-theme="dark"] {
+  --bs-body-bg: var(--bs-black) !important;
+  --bs-heading-color: var(--bs-white) !important;
+}
+
 body {
   margin-bottom: 60px;
 }
