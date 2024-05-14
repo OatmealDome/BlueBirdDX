@@ -37,9 +37,14 @@ public class AttachmentCache
         _uploadedMediaCollection = DatabaseManager.Instance.GetCollection<UploadedMedia>("media");
     }
 
-    public UploadedMedia GetMediaDocument(ObjectId mediaId)
+    public string GetMediaMimeType(ObjectId mediaId)
     {
-        return _mediaDocumentCache[mediaId];
+        return _mediaDocumentCache[mediaId].MimeType;
+    }
+
+    public string GetMediaAltText(ObjectId mediaId)
+    {
+        return _mediaDocumentCache[mediaId].AltText;
     }
     
     public byte[] GetMediaData(ObjectId mediaId)

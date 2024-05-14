@@ -244,11 +244,11 @@ public class PostThreadManager
 
                 foreach (ObjectId mediaId in item.AttachedMedia)
                 {
-                    UploadedMedia media = attachmentCache.GetMediaDocument(mediaId);
+                    string altText = attachmentCache.GetMediaAltText(mediaId);
 
                     string uploadedMediaId =
                         await client.UploadImage(attachmentCache.GetMediaData(mediaId),
-                            media.AltText.Length > 0 ? media.AltText : null);
+                            altText.Length > 0 ? altText : null);
                     
                     uploadedMediaIds.Add(uploadedMediaId);
                 }
@@ -387,15 +387,13 @@ public class PostThreadManager
             
             foreach (ObjectId mediaId in item.AttachedMedia)
             {
-                UploadedMedia media = attachmentCache.GetMediaDocument(mediaId);
-                byte[] mediaData = attachmentCache.GetMediaData(mediaId);
-
-                GenericBlob blob = await client.Repo_CreateBlob(mediaData, media.MimeType);
+                GenericBlob blob = await client.Repo_CreateBlob(attachmentCache.GetMediaData(mediaId),
+                    attachmentCache.GetMediaMimeType(mediaId));
                 
                 images.Add(new EmbeddedImage()
                 {
                     Image = blob,
-                    AltText = media.AltText
+                    AltText = attachmentCache.GetMediaAltText(mediaId)
                 });
             }
 
@@ -459,12 +457,10 @@ public class PostThreadManager
 
             foreach (ObjectId mediaId in item.AttachedMedia)
             {
-                UploadedMedia media = attachmentCache.GetMediaDocument(mediaId);
-                byte[] mediaData = attachmentCache.GetMediaData(mediaId);
+                using MemoryStream mediaStream = new MemoryStream(attachmentCache.GetMediaData(mediaId));
 
-                using MemoryStream mediaStream = new MemoryStream(mediaData);
-                
-                attachments.Add(await client.UploadMedia(mediaStream, description: media.AltText));
+                attachments.Add(await client.UploadMedia(mediaStream,
+                    description: attachmentCache.GetMediaAltText(mediaId)));
             }
 
             Status status = await client.PublishStatus(text, replyStatusId: previousStatus?.Id,
