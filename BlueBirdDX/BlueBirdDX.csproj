@@ -33,6 +33,7 @@
       <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
       <PackageReference Include="Serilog.Sinks.Grafana.Loki" Version="8.3.0" />
       <PackageReference Include="Serilog.Sinks.Slack" Version="2.2.2" />
+      <PackageReference Include="SixLabors.ImageSharp" Version="3.1.4" />
       <PackageReference Include="TweetinviAPI" Version="5.0.4" />
     </ItemGroup>
 
