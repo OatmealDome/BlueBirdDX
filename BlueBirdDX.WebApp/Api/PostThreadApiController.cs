@@ -115,8 +115,7 @@ public class PostThreadApiController : ControllerBase
                 }
             }
             
-            
-            int attachmentCount = item.AttachedMedia.Count + (item.QuotedPost != null ? 0 : 1);
+            int attachmentCount = item.AttachedMedia.Count + (item.QuotedPost != null ? 1 : 0);
 
             if (attachmentCount > 4)
             {
