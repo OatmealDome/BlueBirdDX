@@ -317,7 +317,7 @@ public class PostThreadManager
                 
                 Uri uri = new Uri(urlString);
         
-                string replacement = $"🔗 {uri.Host}";
+                string replacement = $"🔗\u00a0{uri.Host}";
                 builder.Append(replacement);
 
                 facets.Add(new PostFacet()
