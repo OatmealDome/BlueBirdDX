@@ -126,7 +126,8 @@ public class AttachmentCache
 
         WebDriverConfig config = BbConfig.Instance.WebDriver;
 
-        RemoteWebDriver remoteWebDriver = new RemoteWebDriver(new Uri(config.NodeUrl), options);
+        using RemoteWebDriver remoteWebDriver = new RemoteWebDriver(new Uri(config.NodeUrl), options);
+
         remoteWebDriver.Navigate()
             .GoToUrl(string.Format(config.ScreenshotUrlFormat, "tweet", WebUtility.UrlEncode(url)));
         
@@ -174,9 +175,6 @@ public class AttachmentCache
         Thread.Sleep(5000);
 
         Screenshot screenshot = remoteWebDriver.GetScreenshot();
-            
-        remoteWebDriver.Close();
-        remoteWebDriver.Quit();
 
         _quotedPostCache[url] = screenshot.AsByteArray;
     }
