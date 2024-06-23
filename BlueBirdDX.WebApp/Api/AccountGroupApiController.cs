@@ -39,6 +39,6 @@ public class AccountGroupApiController : ControllerBase
         IEnumerable<PostThread> threads =
             _database.PostThreadCollection.AsQueryable().Where(p => p.TargetGroup == groupIdObj);
         
-        return Ok(threads.Select(p => new AccountGroupMiniPostThreadApi(p)));
+        return Ok(threads.Select(p => new PostThreadMiniApi(p)));
     }
 }

@@ -3,7 +3,7 @@ using BlueBirdDX.Common.Post;
 
 namespace BlueBirdDX.WebApp.Api;
 
-public class AccountGroupMiniPostThreadApi
+public class PostThreadMiniApi
 {
     [JsonPropertyName("id")]
     public string Id
@@ -26,7 +26,7 @@ public class AccountGroupMiniPostThreadApi
         set;
     }
 
-    public AccountGroupMiniPostThreadApi(PostThread realThread)
+    public PostThreadMiniApi(PostThread realThread)
     {
         Id = realThread._id.ToString();
         Name = realThread.Name;
