@@ -211,12 +211,12 @@
                 const attachments = clone.children(".attachments");
                 
                 if (item.quoted_post !== null) {
-                    attachments.append("<p class=\"mb-0\">💬 " + item.quoted_post + " <a href=\"#\" class=\"post-attachment-remove\">(remove)</a></p>");
+                    attachments.append("<p class=\"mb-0\">💬 " + item.quoted_post + " (<a href=\"#\" class=\"post-attachment-view\">view</a>, <a href=\"#\" class=\"post-attachment-remove\">remove</a>)</p>");
                 }
                 
                 for (const i in item.attached_media) {
                     const mediaId = item.attached_media[i];
-                    attachments.append("<p class=\"mb-0\">📷 " + mediaNameCache[mediaId] + " <a href=\"#\" class=\"media-attachment-remove\" data-media-idx=\"" + i + "\">(remove)</a></p>");
+                    attachments.append("<p class=\"mb-0\">📷 " + mediaNameCache[mediaId] + " (<a href=\"#\" class=\"media-attachment-view\" data-media-idx=\"" + i + "\">view</a>, <a href=\"#\" class=\"media-attachment-remove\" data-media-idx=\"" + i + "\">remove</a>)</p>");
                 }
                 
                 clone.appendTo(container);
@@ -380,6 +380,23 @@
                 rebuildPostsContainer();
             });
             
+            $(".attachments").on("click", "a.media-attachment-view", function () {
+                const itemIdx = $(this).parent().parent().parent().attr("data-thread-item-idx");
+                const mediaIdx = $(this).attr("data-media-idx");
+                
+                const mediaId = currentThread.items[itemIdx].attached_media[mediaIdx];
+                
+                $.ajax({
+                    method: "GET",
+                    url: "/api/v1/media/" + mediaId + "/url",
+                }).done(function (response) {
+                    window.open(response.url, "_blank");
+                }).fail(function () {
+                    $("#error-element").text("Failed to generate pre-signed URL.");
+                    $("#error-modal").modal("show");
+                });
+            });
+            
             $(".attachments").on("click", "a.media-attachment-remove", function () {
                 const itemIdx = $(this).parent().parent().parent().attr("data-thread-item-idx");
                 const mediaIdx = $(this).attr("data-media-idx");
@@ -389,6 +406,12 @@
                 currentThread.items[itemIdx].attached_media.splice(mediaIdx, 1);
                 
                 rebuildPostsContainer();
+            });
+            
+            $(".attachments").on("click", "a.post-attachment-view", function () {
+                const itemIdx = $(this).parent().parent().parent().attr("data-thread-item-idx");
+                
+                window.open(currentThread.items[itemIdx].quoted_post, "_blank");
             });
             
             $(".attachments").on("click", "a.post-attachment-remove", function () {
