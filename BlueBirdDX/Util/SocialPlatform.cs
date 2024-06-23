@@ -4,5 +4,6 @@ public enum SocialPlatform
 {
     Twitter,
     Bluesky,
-    Mastodon
+    Mastodon,
+    Threads
 }
