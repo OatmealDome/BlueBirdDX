@@ -4,7 +4,7 @@ on:
       - published
 
 jobs:
-  build:
+  docker-build:
     runs-on: ubuntu-latest
 
     steps:
@@ -49,3 +49,38 @@ jobs:
             NuGet_SourcePassword=${{ secrets.GHCR_INSTALL_PAT }}
           tags: |
             ghcr.io/oatmealdome/bluebirddxwebapp:latest
+  api-library-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '8.0.x'
+      
+      - name: Clear NuGet Caches
+        run: dotnet nuget locals all --clear
+      
+      - name: Install dependencies
+        run: dotnet restore --configfile nuget-ci.config
+        env:
+          NuGet_SourceUrl: https://nuget.pkg.github.com/oatmealdome/index.json
+          NuGet_SourceUserName: ${{ github.repository_owner }}
+          NuGet_SourcePassword: ${{ secrets.GHCR_INSTALL_PAT }}
+
+      - name: Install dependencies
+        run: dotnet restore
+        
+      - name: Build
+        run: dotnet build BlueBirdDX.PublicApi/BlueBirdDX.PublicApi.csproj --configuration Release --no-restore
+      
+      - name: Pack
+        if: github.event_name == 'release'
+        run: dotnet pack BlueBirdDX.PublicApi/BlueBirdDX.PublicApi.csproj --configuration Release --no-restore --verbosity normal --output .
+      
+      - name: Push to NuGet Source
+        if: github.event_name == 'release'
+        run: dotnet nuget push *.nupkg --source ghcr
