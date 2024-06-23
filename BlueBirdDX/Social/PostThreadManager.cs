@@ -96,7 +96,8 @@ public class PostThreadManager
                     }
                     catch (Exception e)
                     {
-                        LogContext.Error(e, "An exception occurred during processing of thread {id}", postThread._id.ToString());
+                        LogContext.Error(e, "An exception occurred during processing of thread {id}",
+                            postThread._id.ToString());
 
                         await UpdateThreadState(postThread, PostThreadState.Error,
                             "An exception occurred during processing.\n\n" + e.ToString());
