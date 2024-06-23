@@ -382,7 +382,7 @@ public class PostThreadManager
                     textWithSpacingIfNecessary = item.Text + "\n\n";
                 }
                 
-                string textWithSpacingAndLink = textWithSpacingIfNecessary + "🐦 original post";
+                string textWithSpacingAndLink = textWithSpacingIfNecessary + "🐦\u00a0original post";
 
                 int linkStartIdx = Encoding.UTF8.GetByteCount(textWithSpacingIfNecessary);
                 int linkEndIdx = Encoding.UTF8.GetByteCount(textWithSpacingAndLink);
@@ -474,7 +474,7 @@ public class PostThreadManager
                     text += "\n\n";
                 }
 
-                text += "🐦 " + item.QuotedPost;
+                text += "🐦\u00a0" + item.QuotedPost;
             }
 
             foreach (ObjectId mediaId in item.AttachedMedia)
@@ -523,7 +523,7 @@ public class PostThreadManager
                     text += "\n\n";
                 }
 
-                text += "🐦 " + item.QuotedPost;
+                text += "🐦\u00a0" + item.QuotedPost;
             }
 
             foreach (ObjectId attachmentId in item.AttachedMedia)
