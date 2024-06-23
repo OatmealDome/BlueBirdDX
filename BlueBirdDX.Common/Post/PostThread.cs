@@ -4,7 +4,7 @@ namespace BlueBirdDX.Common.Post;
 
 public class PostThread
 {
-    public const int LatestSchemaVersion = 2;
+    public const int LatestSchemaVersion = 3;
 
     public ObjectId _id
     {
@@ -43,6 +43,12 @@ public class PostThread
     }
 
     public bool PostToMastodon
+    {
+        get;
+        set;
+    }
+
+    public bool PostToThreads
     {
         get;
         set;

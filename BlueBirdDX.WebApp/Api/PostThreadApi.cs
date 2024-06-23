@@ -41,6 +41,13 @@ public class PostThreadApi
         get;
         set;
     }
+    
+    [JsonPropertyName("post_to_threads")]
+    public bool PostToThreads
+    {
+        get;
+        set;
+    }
 
     [JsonPropertyName("state")]
     public PostThreadState State
@@ -70,6 +77,7 @@ public class PostThreadApi
         PostToTwitter = true;
         PostToBluesky = true;
         PostToMastodon = true;
+        PostToThreads = true;
         State = PostThreadState.Draft;
         ScheduledTime = DateTime.UnixEpoch;
         Items = new List<PostThreadItemApi>();
@@ -83,6 +91,7 @@ public class PostThreadApi
         PostToTwitter = realThread.PostToTwitter;
         PostToBluesky = realThread.PostToBluesky;
         PostToMastodon = realThread.PostToMastodon;
+        PostToThreads = realThread.PostToThreads;
         State = realThread.State;
         ScheduledTime = realThread.ScheduledTime;
         Items = realThread.Items.Select(i => new PostThreadItemApi(i)).ToList();
@@ -95,6 +104,7 @@ public class PostThreadApi
         realThread.PostToTwitter = PostToTwitter;
         realThread.PostToBluesky = PostToBluesky;
         realThread.PostToMastodon = PostToMastodon;
+        realThread.PostToThreads = PostToThreads;
         realThread.State = State;
         realThread.ScheduledTime = ScheduledTime;
         realThread.Items = Items.Select(p => new PostThreadItem()
