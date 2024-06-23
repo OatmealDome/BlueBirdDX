@@ -24,17 +24,17 @@ public class UploadedMediaApiController : ControllerBase
 
     [HttpGet]
     [Route("/api/v1/media")]
-    [ProducesResponseType(typeof(List<UploadedMediaMiniApi>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(List<UploadedMediaApi>), StatusCodes.Status200OK)]
     public IActionResult GetMedia()
     {
         IEnumerable<UploadedMedia> media = _database.UploadedMediaCollection.AsQueryable();
         
-        return Ok(media.Select(m => new UploadedMediaMiniApi(m)));
+        return Ok(media.Select(m => new UploadedMediaApi(m)));
     }
     
     [HttpPost]
     [Route("/api/v1/media")]
-    [ProducesResponseType(typeof(UploadedMediaMiniApi), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(UploadedMediaApi), StatusCodes.Status200OK)]
     public IActionResult PostMedia([FromForm] string name, IFormFile file, [FromForm] string? altText = null)
     {
         if (name == "")
@@ -82,7 +82,7 @@ public class UploadedMediaApiController : ControllerBase
             return Problem("An error occurred while transferring the media data to remote storage", statusCode: 500);
         }
         
-        return Ok(new UploadedMediaMiniApi(media));
+        return Ok(new UploadedMediaApi(media));
     }
 
     private UploadedMedia? FindMediaById(string mediaId)
