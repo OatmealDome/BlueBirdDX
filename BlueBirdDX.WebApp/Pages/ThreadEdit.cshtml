@@ -45,6 +45,10 @@
             <input id="targetCheckMastodon" class="form-check-input" type="checkbox" value="post_to_mastodon">
             <label class="form-check-label" for="targetCheckMastodon">Mastodon</label>
         </div>
+        <div class="form-check form-check-inline">
+            <input id="targetCheckThreads" class="form-check-input" type="checkbox" value="post_to_threads">
+            <label class="form-check-label" for="targetCheckThreads">Threads</label>
+        </div>
     </div>
     <label class="form-label mb-0">State</label>
     <div>
@@ -425,6 +429,10 @@
             
             if (currentThread.post_to_mastodon) {
                 $("#targetCheckMastodon").prop('checked', true);
+            }
+            
+            if (currentThread.post_to_threads) {
+                $("#targetCheckThreads").prop('checked', true);
             }
             
             let stateSelector;
