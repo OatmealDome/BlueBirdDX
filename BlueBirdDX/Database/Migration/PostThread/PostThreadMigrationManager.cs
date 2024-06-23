@@ -7,5 +7,6 @@ public class PostThreadMigrationManager : MigrationManager
     protected override IEnumerable<IDocumentMigrator> Migrators => new List<IDocumentMigrator>()
     {
         new PostThreadMigratorOneToTwo(),
+        new PostThreadMigratorTwoToThree()
     };
 }
