@@ -7,7 +7,7 @@ on:
       - master
 
 jobs:
-  build:
+  normal-build:
     runs-on: ubuntu-latest
 
     steps:
@@ -31,3 +31,33 @@ jobs:
         
       - name: Build
         run: dotnet build --configuration Release --no-restore
+  docker-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build Core
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./BlueBirdDX/Dockerfile
+          platforms: linux/amd64
+          build-args: |
+            NuGet_SourceUrl=https://nuget.pkg.github.com/oatmealdome/index.json
+            NuGet_SourceUserName=${{ github.repository_owner }}
+            NuGet_SourcePassword=${{ secrets.GHCR_INSTALL_PAT }}
+          tags: |
+            ghcr.io/oatmealdome/bluebirddx:latest
+      - name: Build WebApp
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./BlueBirdDX.WebApp/Dockerfile
+          platforms: linux/amd64
+          build-args: |
+            NuGet_SourceUrl=https://nuget.pkg.github.com/oatmealdome/index.json
+            NuGet_SourceUserName=${{ github.repository_owner }}
+            NuGet_SourcePassword=${{ secrets.GHCR_INSTALL_PAT }}
+          tags: |
+            ghcr.io/oatmealdome/bluebirddxwebapp:latest
