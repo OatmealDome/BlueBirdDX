@@ -1,4 +1,6 @@
 using System.Net;
+using System.Security.Cryptography;
+using System.Text;
 using BlueBirdDX.Common.Media;
 using BlueBirdDX.Common.Storage;
 using BlueBirdDX.Config;
@@ -122,6 +124,15 @@ public class AttachmentCache
         }
     }
 
+    private string ComputeRemoteFileNameForQuotedPost(string url)
+    {
+        using SHA256 sha = SHA256.Create();
+        
+        byte[] hash = sha.ComputeHash(Encoding.UTF8.GetBytes(url));
+        
+        return "quoted_posts/" + Convert.ToHexString(hash).ToLower();
+    }
+
     public async Task AddQuotedPostToCache(string url)
     {
         ChromeOptions options = new ChromeOptions();
@@ -181,11 +192,20 @@ public class AttachmentCache
 
         Screenshot screenshot = remoteWebDriver.GetScreenshot();
 
-        _quotedPostCache[url] = screenshot.AsByteArray;
+        byte[] data = screenshot.AsByteArray;
+
+        _quotedPostCache[url] = data;
+        
+        _remoteStorage.TransferFile(ComputeRemoteFileNameForQuotedPost(url), data, "image/png");
     }
 
     public byte[] GetQuotedPostData(string url)
     {
         return _quotedPostCache[url];
+    }
+
+    public string GetQuotedPostPreSignedUrl(string url)
+    {
+        return _remoteStorage.GetPreSignedUrlForFile(ComputeRemoteFileNameForQuotedPost(url), 15);
     }
 }
