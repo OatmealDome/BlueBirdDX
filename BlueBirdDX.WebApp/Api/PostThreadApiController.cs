@@ -96,7 +96,7 @@ public class PostThreadApiController : ControllerBase
         {
             if (item.QuotedPost != null)
             {
-                if (!Uri.TryCreate(item.QuotedPost, UriKind.Absolute, out Uri uri))
+                if (!Uri.TryCreate(item.QuotedPost, UriKind.Absolute, out Uri? uri))
                 {
                     error = "Invalid quoted post URL";
                     return false;
