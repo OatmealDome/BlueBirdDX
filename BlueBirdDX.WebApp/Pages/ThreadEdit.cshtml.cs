@@ -1,5 +1,6 @@
 using BlueBirdDX.Common.Media;
 using BlueBirdDX.Common.Post;
+using BlueBirdDX.PublicApi;
 using BlueBirdDX.WebApp.Api;
 using BlueBirdDX.WebApp.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -70,7 +71,7 @@ public class ThreadEditModel : PageModel
                 MediaNameCache[media._id.ToString()] = media.Name;
             }
 
-            ApiThread = new PostThreadApi(realThread);
+            ApiThread = PostThreadApiExtensions.CreateApiFromCommon(realThread);
         }
 
         ApiThreadId = threadId;

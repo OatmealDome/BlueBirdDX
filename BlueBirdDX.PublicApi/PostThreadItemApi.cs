@@ -1,7 +1,6 @@
 using System.Text.Json.Serialization;
-using BlueBirdDX.Common.Post;
 
-namespace BlueBirdDX.WebApp.Api;
+namespace BlueBirdDX.PublicApi;
 
 public class PostThreadItemApi
 {
@@ -31,12 +30,5 @@ public class PostThreadItemApi
         Text = "";
         AttachedMedia = new List<string>();
         QuotedPost = null;
-    }
-    
-    public PostThreadItemApi(PostThreadItem realItem)
-    {
-        Text = realItem.Text;
-        AttachedMedia = realItem.AttachedMedia.Select(m => m.ToString()).ToList();
-        QuotedPost = realItem.QuotedPost;
     }
 }

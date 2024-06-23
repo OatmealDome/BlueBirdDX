@@ -1,5 +1,6 @@
 using BlueBirdDX.Common.Media;
 using BlueBirdDX.Common.Post;
+using BlueBirdDX.PublicApi;
 using BlueBirdDX.WebApp.Api;
 using BlueBirdDX.WebApp.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -46,8 +47,8 @@ public class MediaEditModel : PageModel
         {
             return NotFound();
         }
-        
-        ApiMedia = new UploadedMediaApi(realMedia);
+
+        ApiMedia = UploadedMediaApiExtensions.CreateApiFromCommon(realMedia);
 
         return Page();
     }

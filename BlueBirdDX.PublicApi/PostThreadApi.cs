@@ -1,8 +1,6 @@
 using System.Text.Json.Serialization;
-using BlueBirdDX.Common.Post;
-using MongoDB.Bson;
 
-namespace BlueBirdDX.WebApp.Api;
+namespace BlueBirdDX.PublicApi;
 
 // Exposes a subset of PostThread for API use.
 public class PostThreadApi
@@ -50,7 +48,7 @@ public class PostThreadApi
     }
 
     [JsonPropertyName("state")]
-    public PostThreadState State
+    public int State
     {
         get;
         set;
@@ -85,43 +83,10 @@ public class PostThreadApi
         PostToBluesky = true;
         PostToMastodon = true;
         PostToThreads = true;
-        State = PostThreadState.Draft;
+        State = 0; // Draft
         ParentThread = null;
         ScheduledTime = DateTime.UnixEpoch;
         Items = new List<PostThreadItemApi>();
         Items.Add(new PostThreadItemApi());
-    }
-    
-    public PostThreadApi(PostThread realThread)
-    {
-        Name = realThread.Name;
-        TargetGroup = realThread.TargetGroup.ToString();
-        PostToTwitter = realThread.PostToTwitter;
-        PostToBluesky = realThread.PostToBluesky;
-        PostToMastodon = realThread.PostToMastodon;
-        PostToThreads = realThread.PostToThreads;
-        State = realThread.State;
-        ParentThread = realThread.ParentThread.ToString();
-        ScheduledTime = realThread.ScheduledTime;
-        Items = realThread.Items.Select(i => new PostThreadItemApi(i)).ToList();
-    }
-
-    public void TransferToNormal(PostThread realThread)
-    {
-        realThread.Name = Name;
-        realThread.TargetGroup = ObjectId.Parse(TargetGroup);
-        realThread.PostToTwitter = PostToTwitter;
-        realThread.PostToBluesky = PostToBluesky;
-        realThread.PostToMastodon = PostToMastodon;
-        realThread.PostToThreads = PostToThreads;
-        realThread.State = State;
-        realThread.ParentThread = ParentThread != null ? ObjectId.Parse(ParentThread) : null;
-        realThread.ScheduledTime = ScheduledTime;
-        realThread.Items = Items.Select(p => new PostThreadItem()
-        {
-            Text = p.Text,
-            AttachedMedia = p.AttachedMedia.Select(m => ObjectId.Parse(m)).ToList(),
-            QuotedPost = p.QuotedPost
-        }).ToList();
     }
 }

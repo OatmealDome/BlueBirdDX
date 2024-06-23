@@ -1,6 +1,7 @@
 using BlueBirdDX.Common.Account;
 using BlueBirdDX.Common.Media;
 using BlueBirdDX.Common.Post;
+using BlueBirdDX.PublicApi;
 using BlueBirdDX.WebApp.Services;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
@@ -38,7 +39,7 @@ public class PostThreadApiController : ControllerBase
             return Problem("Invalid thread ID", statusCode: 404);
         }
 
-        return Ok(new PostThreadApi(postThread));
+        return Ok(PostThreadApiExtensions.CreateApiFromCommon(postThread));
     }
 
     private bool IsIncomingThreadSane(PostThreadApi inState, out string? error)
@@ -173,7 +174,7 @@ public class PostThreadApiController : ControllerBase
             return false;
         }
 
-        if (inState.State == PostThreadState.Sent || inState.State == PostThreadState.Error)
+        if (inState.State == (int)PostThreadState.Sent || inState.State == (int)PostThreadState.Error)
         {
             error = "Invalid thread state";
             return false;
@@ -185,7 +186,7 @@ public class PostThreadApiController : ControllerBase
             return false;
         }
 
-        if (inState.State == PostThreadState.Enqueued && DateTime.UtcNow > inState.ScheduledTime)
+        if (inState.State == (int)PostThreadState.Enqueued && DateTime.UtcNow > inState.ScheduledTime)
         {
             TimeSpan span = DateTime.UtcNow - inState.ScheduledTime;
 
@@ -269,7 +270,7 @@ public class PostThreadApiController : ControllerBase
         }
         
         PostThread postThread = new PostThread();
-        postThreadApi.TransferToNormal(postThread);
+        postThreadApi.TransferApiToCommon(postThread);
         
         _database.PostThreadCollection.InsertOne(postThread);
         
@@ -305,7 +306,7 @@ public class PostThreadApiController : ControllerBase
             return Problem(error, statusCode: 400);
         }
         
-        postThreadApi.TransferToNormal(postThread);
+        postThreadApi.TransferApiToCommon(postThread);
         
         _database.PostThreadCollection.ReplaceOne(Builders<PostThread>.Filter.Eq(p => p._id, postThread._id),
             postThread);

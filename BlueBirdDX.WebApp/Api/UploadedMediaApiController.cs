@@ -1,5 +1,6 @@
 using BlueBirdDX.Common.Media;
 using BlueBirdDX.Common.Storage;
+using BlueBirdDX.PublicApi;
 using BlueBirdDX.WebApp.Services;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
@@ -21,7 +22,7 @@ public class UploadedMediaApiController : ControllerBase
         _database = database;
         _remoteStorage = remoteStorage.SharedInstance;
     }
-
+    
     [HttpGet]
     [Route("/api/v1/media")]
     [ProducesResponseType(typeof(List<UploadedMediaApi>), StatusCodes.Status200OK)]
@@ -29,7 +30,7 @@ public class UploadedMediaApiController : ControllerBase
     {
         IEnumerable<UploadedMedia> media = _database.UploadedMediaCollection.AsQueryable();
         
-        return Ok(media.Select(m => new UploadedMediaApi(m)));
+        return Ok(media.Select(m => UploadedMediaApiExtensions.CreateApiFromCommon(m)));
     }
     
     [HttpPost]
@@ -82,7 +83,7 @@ public class UploadedMediaApiController : ControllerBase
             return Problem("An error occurred while transferring the media data to remote storage", statusCode: 500);
         }
         
-        return Ok(new UploadedMediaApi(media));
+        return Ok(UploadedMediaApiExtensions.CreateApiFromCommon(media));
     }
 
     private UploadedMedia? FindMediaById(string mediaId)
@@ -115,7 +116,7 @@ public class UploadedMediaApiController : ControllerBase
             return Problem("Invalid media ID", statusCode: 404);
         }
         
-        return Ok(new UploadedMediaApi(media));
+        return Ok(UploadedMediaApiExtensions.CreateApiFromCommon(media));
     }
     
     [HttpPut]
@@ -137,8 +138,8 @@ public class UploadedMediaApiController : ControllerBase
         {
             return Problem("Name cannot be empty", statusCode: 400);
         }
-        
-        apiMedia.TransferToNormal(realMedia);
+
+        apiMedia.TransferApiToCommon(realMedia);
 
         _database.UploadedMediaCollection.ReplaceOne(Builders<UploadedMedia>.Filter.Eq(m => m._id, realMedia._id),
             realMedia);

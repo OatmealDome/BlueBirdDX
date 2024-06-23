@@ -1,7 +1,6 @@
 using System.Text.Json.Serialization;
-using BlueBirdDX.Common.Media;
 
-namespace BlueBirdDX.WebApp.Api;
+namespace BlueBirdDX.PublicApi;
 
 // Exposes a subset of UploadedMedia for API use.
 public class UploadedMediaApi
@@ -32,18 +31,5 @@ public class UploadedMediaApi
         Id = "";
         Name = "";
         AltText = "";
-    }
-
-    public UploadedMediaApi(UploadedMedia realMedia)
-    {
-        Id = realMedia._id.ToString();
-        Name = realMedia.Name;
-        AltText = realMedia.AltText;
-    }
-
-    public void TransferToNormal(UploadedMedia realMedia)
-    {
-        realMedia.Name = Name;
-        realMedia.AltText = AltText;
     }
 }
