@@ -4,7 +4,7 @@ namespace BlueBirdDX.Common.Account;
 
 public class AccountGroup
 {
-    public const int LatestSchemaVersion = 1;
+    public const int LatestSchemaVersion = 2;
 
     public ObjectId _id
     {
@@ -37,6 +37,12 @@ public class AccountGroup
     }
 
     public MastodonAccount? Mastodon
+    {
+        get;
+        set;
+    }
+
+    public ThreadsAccount? Threads
     {
         get;
         set;
