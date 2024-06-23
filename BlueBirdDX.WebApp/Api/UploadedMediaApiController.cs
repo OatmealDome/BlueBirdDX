@@ -73,7 +73,7 @@ public class UploadedMediaApiController : ControllerBase
 
         try
         {
-            _remoteStorage.TransferFile(media._id.ToString(), memoryStream, format.DefaultMimeType);
+            _remoteStorage.TransferFile("media/" + media._id.ToString(), memoryStream, format.DefaultMimeType);
         }
         catch (Exception)
         {
@@ -163,7 +163,7 @@ public class UploadedMediaApiController : ControllerBase
 
         try
         {
-            url = _remoteStorage.GetPreSignedUrlForFile(mediaId, 15);
+            url = _remoteStorage.GetPreSignedUrlForFile("media/" + mediaId, 15);
         }
         catch (Exception)
         {

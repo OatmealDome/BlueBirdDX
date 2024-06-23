@@ -77,7 +77,7 @@ public class AttachmentCache
 
     public string GetMediaPreSignedUrl(ObjectId mediaId)
     {
-        return _remoteStorage.GetPreSignedUrlForFile(mediaId.ToString(), 15);
+        return _remoteStorage.GetPreSignedUrlForFile("media/" + mediaId.ToString(), 15);
     }
     
     public async Task AddMediaToCache(ObjectId mediaId)
@@ -90,7 +90,7 @@ public class AttachmentCache
         UploadedMedia media = _uploadedMediaCollection.AsQueryable().FirstOrDefault(m => m._id == mediaId)!;
         _mediaDocumentCache[mediaId] = media;
 
-        byte[] data = await _remoteStorage.DownloadFile(mediaId.ToString());
+        byte[] data = await _remoteStorage.DownloadFile("media/" + mediaId.ToString());
         _mediaDataCache[mediaId] = data;
 
         if (data.Length > BlueskyMaximumImageSize)
