@@ -20,7 +20,7 @@ public class AccountGroupApiController : ControllerBase
 
     [HttpGet]
     [Route("/api/v1/group/{groupId}/threads")]
-    [ProducesResponseType(typeof(PostThreadApi), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(List<PostThreadItemApi>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public IActionResult GetAccountGroupOwningThreads(string groupId)
     {
