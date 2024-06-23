@@ -95,4 +95,18 @@ ITrigger processTrigger = TriggerBuilder.Create()
 
 await JobScheduler.Instance.ScheduleJob(processJob, processTrigger);
 
+IJobDetail threadsTokenJob = JobBuilder.Create<BbRefreshThreadsTokensJob>()
+    .WithIdentity("threadsTokenJob")
+    .Build();
+
+ITrigger threadsTokenTrigger = TriggerBuilder.Create()
+    .WithIdentity("threadsTokenTrigger")
+    .StartAt(DateTime.UtcNow)
+    .WithSimpleSchedule(builder => builder
+        .WithIntervalInHours(24)
+        .RepeatForever())
+    .Build();
+
+await JobScheduler.Instance.ScheduleJob(threadsTokenJob, threadsTokenTrigger);
+
 await Task.Delay(-1);
