@@ -103,6 +103,68 @@ public class PostThreadApiController : ControllerBase
                 error = "Parent thread not in Sent state";
                 return false;
             }
+
+            PostThreadItem lastParentItem = parentThread.Items.Last();
+
+            if (inState.PostToTwitter)
+            {
+                if (!parentThread.PostToTwitter)
+                {
+                    error = "Parent thread not posted to Twitter";
+                    return false;
+                }
+
+                if (lastParentItem.TwitterId == null)
+                {
+                    error = "Final item in parent thread has no tweet ID";
+                    return false;
+                }
+            }
+            
+            if (inState.PostToBluesky)
+            {
+                if (!parentThread.PostToBluesky)
+                {
+                    error = "Parent thread not posted to Bluesky";
+                    return false;
+                }
+                
+                if (lastParentItem.BlueskyRootRef == null || lastParentItem.BlueskyThisRef == null)
+                {
+                    error = "Final item in parent thread has no Bluesky post reference(s)";
+                    return false;
+                }
+            }
+            
+            if (inState.PostToMastodon)
+            {
+                if (!parentThread.PostToMastodon)
+                {
+                    error = "Parent thread not posted to Mastodon";
+                    return false;
+                }
+                
+                if (lastParentItem.MastodonId == null)
+                {
+                    error = "Final item in parent thread has no Mastodon status ID";
+                    return false;
+                }
+            }
+            
+            if (inState.PostToThreads)
+            {
+                if (!parentThread.PostToThreads)
+                {
+                    error = "Parent thread not posted to Threads";
+                    return false;
+                }
+                
+                if (lastParentItem.ThreadsId == null)
+                {
+                    error = "Final item in parent thread has no Threads media container ID";
+                    return false;
+                }
+            }
         }
         
         if (inState.ScheduledTime.Kind != DateTimeKind.Utc)
