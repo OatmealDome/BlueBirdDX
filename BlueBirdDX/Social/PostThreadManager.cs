@@ -4,6 +4,7 @@ using BlueBirdDX.Common.Account;
 using BlueBirdDX.Common.Media;
 using BlueBirdDX.Common.Post;
 using BlueBirdDX.Common.Storage;
+using BlueBirdDX.Common.Util;
 using BlueBirdDX.Config;
 using BlueBirdDX.Config.Storage;
 using BlueBirdDX.Database;
@@ -162,13 +163,20 @@ public class PostThreadManager
         AccountGroup group =
             _accountGroupCollection.AsQueryable().FirstOrDefault(a => a._id == postThread.TargetGroup)!;
 
+        PostThread? parentThread = null;
+
+        if (postThread.ParentThread != null)
+        {
+            parentThread = _postThreadCollection.AsQueryable().FirstOrDefault(t => t._id == postThread.ParentThread)!;
+        }
+
         if (postThread.PostToTwitter && group.Twitter != null)
         {
             LogContext.Information("Posting thread {id} to Twitter", postThread._id.ToString());
             
             try
             {
-                await PostToTwitter(postThread, group.Twitter, attachmentCache);
+                await PostToTwitter(postThread, parentThread, group.Twitter, attachmentCache);
             }
             catch (Exception e)
             {
@@ -185,7 +193,7 @@ public class PostThreadManager
             
             try
             {
-                await PostToBluesky(postThread, group.Bluesky, attachmentCache);
+                await PostToBluesky(postThread, parentThread, group.Bluesky, attachmentCache);
             }
             catch (Exception e)
             {
@@ -202,7 +210,7 @@ public class PostThreadManager
             
             try
             {
-                await PostToMastodon(postThread, group.Mastodon, attachmentCache);
+                await PostToMastodon(postThread, parentThread, group.Mastodon, attachmentCache);
             }
             catch (Exception e)
             {
@@ -219,7 +227,7 @@ public class PostThreadManager
             
             try
             {
-                await PostToThreads(postThread, group.Threads, attachmentCache);
+                await PostToThreads(postThread, parentThread, group.Threads, attachmentCache);
             }
             catch (Exception e)
             {
@@ -240,11 +248,12 @@ public class PostThreadManager
         await UpdateThreadState(postThread, outState, errorBuilder.ToString());
     }
 
-    private async Task PostToTwitter(PostThread postThread, TwitterAccount account, AttachmentCache attachmentCache)
+    private async Task PostToTwitter(PostThread postThread, PostThread? parentThread, TwitterAccount account,
+        AttachmentCache attachmentCache)
     {
         BbTwitterClient client = new BbTwitterClient(account);
 
-        string? previousId = null;
+        string? previousId = parentThread?.Items.Last().TwitterId;
 
         foreach (PostThreadItem item in postThread.Items)
         {
@@ -279,16 +288,26 @@ public class PostThreadManager
 
             previousId = await client.Tweet(item.Text, quotedTweetId: quotedTweetId, replyToTweetId: previousId,
                 mediaIds: twitterMediaIds);
+
+            item.TwitterId = previousId;
         }
     }
 
-    private async Task PostToBluesky(PostThread postThread, BlueskyAccount account, AttachmentCache attachmentCache)
+    private async Task PostToBluesky(PostThread postThread, PostThread? parentThread, BlueskyAccount account,
+        AttachmentCache attachmentCache)
     {
         BlueskyClient client = new BlueskyClient();
         await client.Server_CreateSession(account.Identifier, account.Password);
+
+        PostThreadItem? lastParentItem = parentThread?.Items.Last();
+
+        StrongRef? BbCommonRefToAirshipRef(BlueskyRef? commonRef)
+        {
+            return commonRef != null ? new StrongRef(commonRef.Uri, commonRef.Cid) : null;
+        }
         
-        StrongRef? rootPost = null;
-        StrongRef? previousPost = null;
+        StrongRef? rootPost = BbCommonRefToAirshipRef(lastParentItem?.BlueskyRootRef);
+        StrongRef? previousPost = BbCommonRefToAirshipRef(lastParentItem?.BlueskyThisRef);
         
         foreach (PostThreadItem item in postThread.Items)
         {
@@ -443,16 +462,29 @@ public class PostThreadManager
             {
                 rootPost = previousPost;
             }
+
+            BlueskyRef AirshipRefToBbCommonRef(StrongRef strongRef)
+            {
+                return new BlueskyRef()
+                {
+                    Cid = strongRef.Cid,
+                    Uri = strongRef.Uri
+                };
+            }
+
+            item.BlueskyRootRef = AirshipRefToBbCommonRef(rootPost);
+            item.BlueskyThisRef = AirshipRefToBbCommonRef(previousPost);
         }
 
         await client.Server_DeleteSession();
     }
-    
-    private async Task PostToMastodon(PostThread postThread, MastodonAccount account, AttachmentCache attachmentCache)
+
+    private async Task PostToMastodon(PostThread postThread, PostThread? parentThread, MastodonAccount account,
+        AttachmentCache attachmentCache)
     {
         MastodonClient client = new MastodonClient(account.InstanceUrl, account.AccessToken);
 
-        Status? previousStatus = null;
+        string? previousId = parentThread?.Items.Last().MastodonId;
 
         foreach (PostThreadItem item in postThread.Items)
         {
@@ -486,14 +518,17 @@ public class PostThreadManager
                     description: attachmentCache.GetMediaAltText(mediaId)));
             }
 
-            Status status = await client.PublishStatus(text, replyStatusId: previousStatus?.Id,
+            Status status = await client.PublishStatus(text, replyStatusId: previousId,
                 mediaIds: attachments.Count > 0 ? attachments.Select(a => a.Id) : null, visibility: Visibility.Public);
 
-            previousStatus = status;
+            previousId = status.Id;
+
+            item.MastodonId = previousId;
         }
     }
 
-    private async Task PostToThreads(PostThread postThread, ThreadsAccount account, AttachmentCache attachmentCache)
+    private async Task PostToThreads(PostThread postThread, PostThread? parentThread, ThreadsAccount account,
+        AttachmentCache attachmentCache)
     {
         ThreadsClient client = new ThreadsClient(account.ClientId, account.ClientSecret)
         {
@@ -506,7 +541,7 @@ public class PostThreadManager
             }
         };
 
-        string? previousId = null;
+        string? previousId = parentThread?.Items.Last().ThreadsId;
 
         foreach (PostThreadItem item in postThread.Items)
         {
@@ -554,6 +589,8 @@ public class PostThreadManager
             }
 
             previousId = await client.Publishing_PublishMediaContainer(containerId);
+
+            item.ThreadsId = previousId;
         }
     }
 }
