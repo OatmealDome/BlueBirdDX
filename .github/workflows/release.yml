@@ -64,6 +64,9 @@ jobs:
       - name: Clear NuGet Caches
         run: dotnet nuget locals all --clear
       
+      - name: Setup NuGet Source
+        run: dotnet nuget add source "https://nuget.pkg.github.com/oatmealdome/index.json" --name ghcr --username ${{ github.repository_owner }} --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text
+
       - name: Install dependencies
         run: dotnet restore --configfile nuget-ci.config
         env:
