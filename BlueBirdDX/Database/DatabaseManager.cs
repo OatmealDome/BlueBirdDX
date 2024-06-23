@@ -1,6 +1,7 @@
 using BlueBirdDX.Config;
 using BlueBirdDX.Config.Database;
 using BlueBirdDX.Database.Migration;
+using BlueBirdDX.Database.Migration.AccountGroup;
 using BlueBirdDX.Database.Migration.PostThread;
 using MongoDB.Driver;
 
@@ -13,7 +14,8 @@ public class DatabaseManager
 
     private readonly IEnumerable<MigrationManager> _migrationManagers = new List<MigrationManager>()
     {
-        new PostThreadMigrationManager()
+        new AccountGroupMigrationManager(),
+        new PostThreadMigrationManager(),
     };
 
     private readonly MongoClient _client;
