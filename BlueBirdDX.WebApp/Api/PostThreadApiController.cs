@@ -81,6 +81,30 @@ public class PostThreadApiController : ControllerBase
             return false;
         }
         
+        if (inState.ParentThread != null)
+        {
+            if (!ObjectId.TryParse(inState.ParentThread, out ObjectId parentId))
+            {
+                error = "Invalid parent thread ID";
+                return false;
+            }
+
+            PostThread? parentThread =
+                _database.PostThreadCollection.AsQueryable().FirstOrDefault(t => t._id == parentId);
+
+            if (parentThread == null)
+            {
+                error = "Invalid parent thread ID";
+                return false;
+            }
+
+            if (parentThread.State != PostThreadState.Sent)
+            {
+                error = "Parent thread not in Sent state";
+                return false;
+            }
+        }
+        
         if (inState.ScheduledTime.Kind != DateTimeKind.Utc)
         {
             error = "Scheduled time is not in UTC";

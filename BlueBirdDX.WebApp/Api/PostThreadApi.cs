@@ -56,6 +56,13 @@ public class PostThreadApi
         set;
     }
 
+    [JsonPropertyName("parent_thread")]
+    public string? ParentThread
+    {
+        get;
+        set;
+    }
+
     [JsonPropertyName("scheduled_time")]
     public DateTime ScheduledTime
     {
@@ -79,6 +86,7 @@ public class PostThreadApi
         PostToMastodon = true;
         PostToThreads = true;
         State = PostThreadState.Draft;
+        ParentThread = null;
         ScheduledTime = DateTime.UnixEpoch;
         Items = new List<PostThreadItemApi>();
         Items.Add(new PostThreadItemApi());
@@ -93,6 +101,7 @@ public class PostThreadApi
         PostToMastodon = realThread.PostToMastodon;
         PostToThreads = realThread.PostToThreads;
         State = realThread.State;
+        ParentThread = realThread.ParentThread.ToString();
         ScheduledTime = realThread.ScheduledTime;
         Items = realThread.Items.Select(i => new PostThreadItemApi(i)).ToList();
     }
@@ -106,6 +115,7 @@ public class PostThreadApi
         realThread.PostToMastodon = PostToMastodon;
         realThread.PostToThreads = PostToThreads;
         realThread.State = State;
+        realThread.ParentThread = ParentThread != null ? ObjectId.Parse(ParentThread) : null;
         realThread.ScheduledTime = ScheduledTime;
         realThread.Items = Items.Select(p => new PostThreadItem()
         {
