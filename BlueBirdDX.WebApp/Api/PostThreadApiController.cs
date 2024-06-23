@@ -56,6 +56,30 @@ public class PostThreadApiController : ControllerBase
             error = "Invalid account group ID";
             return false;
         }
+
+        if (inState.PostToTwitter && group.Twitter == null)
+        {
+            error = "Twitter account does not exist in this group";
+            return false;
+        }
+        
+        if (inState.PostToBluesky && group.Bluesky == null)
+        {
+            error = "Bluesky account does not exist in this group";
+            return false;
+        }
+        
+        if (inState.PostToMastodon && group.Mastodon == null)
+        {
+            error = "Mastodon account does not exist in this group";
+            return false;
+        }
+        
+        if (inState.PostToThreads && group.Threads == null)
+        {
+            error = "Threads account does not exist in this group";
+            return false;
+        }
         
         if (inState.ScheduledTime.Kind != DateTimeKind.Utc)
         {
