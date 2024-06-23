@@ -75,6 +75,8 @@ await DatabaseManager.Instance.PerformMigration();
 
 await JobScheduler.Initialize();
 
+AccountGroupManager.Initialize();
+
 PostThreadManager.Initialize();
 
 localLogContext.Information("Start up complete");

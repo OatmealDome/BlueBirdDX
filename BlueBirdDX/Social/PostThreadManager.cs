@@ -39,7 +39,6 @@ public class PostThreadManager
     private static readonly ILogger LogContext =
         Log.ForContext(Constants.SourceContextPropertyName, "PostThreadManager");
     
-    private readonly IMongoCollection<AccountGroup> _accountGroupCollection;
     private readonly IMongoCollection<PostThread> _postThreadCollection;
 
     private readonly RemoteStorage _remoteStorage;
@@ -48,7 +47,6 @@ public class PostThreadManager
 
     private PostThreadManager()
     {
-        _accountGroupCollection = DatabaseManager.Instance.GetCollection<AccountGroup>("accounts");
         _postThreadCollection = DatabaseManager.Instance.GetCollection<PostThread>("threads");
 
         RemoteStorageConfig storageConfig = BbConfig.Instance.RemoteStorage;
@@ -160,8 +158,7 @@ public class PostThreadManager
             errorBuilder.AppendLine(error);
         }
 
-        AccountGroup group =
-            _accountGroupCollection.AsQueryable().FirstOrDefault(a => a._id == postThread.TargetGroup)!;
+        AccountGroup group = AccountGroupManager.Instance.GetAccountGroup(postThread.TargetGroup);
 
         PostThread? parentThread = null;
 
