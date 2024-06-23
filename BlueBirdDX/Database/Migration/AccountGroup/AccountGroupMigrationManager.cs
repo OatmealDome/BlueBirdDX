@@ -6,6 +6,6 @@ public class AccountGroupMigrationManager : MigrationManager
 
     protected override IEnumerable<IDocumentMigrator> Migrators => new List<IDocumentMigrator>()
     {
-        //
+        new AccountGroupMigratorOneToTwo()
     };
 }
