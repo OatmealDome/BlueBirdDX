@@ -1,6 +1,7 @@
 @page "/thread/{threadId}"
 @using System.Text.Json
 @using BlueBirdDX.Common.Account
+@using BlueBirdDX.Common.Post
 @using BlueBirdDX.WebApp.Services
 @using MongoDB.Driver
 @inject DatabaseService Database
@@ -67,6 +68,16 @@
             <input id="timeInput" class="form-control" type="datetime-local"/>
             <button id="timeNowButton" class="btn btn-outline-secondary" type="button">Now</button>
         </div>
+    </div>
+    <div>
+        <label for="parentSelect" class="form-label">Parent Thread</label>
+        <select id="parentSelect" class="form-select">
+            <option value="none">(none)</option>
+            @foreach (PostThread thread in Database.PostThreadCollection.AsQueryable().Where(t => t.State == PostThreadState.Sent))
+            {
+                <option value="@thread._id.ToString()">@thread.Name</option>
+            }
+        </select>
     </div>
     <div id="postsContainer" class="d-grid gap-3"></div>
     <button id="addPostButton" class="btn btn-secondary">Add Post</button>
@@ -272,6 +283,16 @@
                 currentThread[val] = $(this).is(":checked");
             });
             
+            $("#parentSelect").change(function () {
+                const val = $(this).val();
+                
+                if (val === "none") {
+                    currentThread.parent_thread = null;
+                } else {
+                    currentThread.parent_thread = val;
+                }
+            });
+            
             $("#timeInput").change(function () {
                 // convert to UTC, then to a proper ISO 8601 string
                 currentThread.scheduled_time = luxon.DateTime.fromISO($(this).val()).toUTC().toISO();
@@ -445,6 +466,18 @@
                 $("#timeContainer").removeClass("d-none");
             }
             
+            if (currentThread.parent_thread !== null) {
+                $("#parentSelect option").each(function () {
+                    if (currentThread.parent_thread === $(this).val()) {
+                        $(this).attr("selected", "selected");
+                    }
+                });
+            } else {
+                console.log("correct");
+                // Correct default value to the first group in the dropdown
+                $("#parentSelect").children(":first").attr("selected", "selected");
+            }
+            
             const scheduledTime = luxon.DateTime.fromISO(currentThread.scheduled_time);
             $("#timeInput").val(scheduledTime.toISO({
                 includeOffset: false
@@ -453,6 +486,11 @@
             $(stateSelector).prop("checked", true);
             
             $("#saveButton").click(function () {
+                // Not sure what causes this, but let's catch it before we save.
+                if (currentThread.parent_thread === "") {
+                    currentThread.parent_thread = null;
+                }
+                
                 const json = JSON.stringify(currentThread);
                 
                 let method;
