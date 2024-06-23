@@ -13,7 +13,8 @@ public class QuoteTweetModel : PageModel
     
     public IActionResult OnGet(string url)
     {
-        QuotedUrl = url;
+        // Remove the query parameters (usually just analytics stuff) and always use twitter.com as the domain
+        QuotedUrl = url.Substring(0, url.IndexOf('?')).Replace("x.com", "twitter.com");
 
         return Page();
     }
