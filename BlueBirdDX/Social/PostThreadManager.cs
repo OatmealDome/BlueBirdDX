@@ -20,6 +20,8 @@ using OatmealDome.Airship.Bluesky.Embed;
 using OatmealDome.Airship.Bluesky.Embed.Image;
 using OatmealDome.Airship.Bluesky.Feed;
 using OatmealDome.Airship.Bluesky.Feed.Facets;
+using OatmealDome.Unravel;
+using OatmealDome.Unravel.Authentication;
 using Serilog;
 using Serilog.Core;
 
@@ -205,6 +207,23 @@ public class PostThreadManager
             catch (Exception e)
             {
                 LogContext.Error(e, "Failed to post thread {id} to Mastodon", postThread._id.ToString());
+                
+                failed = true;
+                AppendError(e.ToString());
+            }
+        }
+        
+        if (postThread.PostToThreads && group.Threads != null)
+        {
+            LogContext.Information("Posting thread {id} to Threads", postThread._id.ToString());
+            
+            try
+            {
+                await PostToThreads(postThread, group.Threads, attachmentCache);
+            }
+            catch (Exception e)
+            {
+                LogContext.Error(e, "Failed to post thread {id} to Threads", postThread._id.ToString());
                 
                 failed = true;
                 AppendError(e.ToString());
@@ -471,6 +490,70 @@ public class PostThreadManager
                 mediaIds: attachments.Count > 0 ? attachments.Select(a => a.Id) : null, visibility: Visibility.Public);
 
             previousStatus = status;
+        }
+    }
+
+    private async Task PostToThreads(PostThread postThread, ThreadsAccount account, AttachmentCache attachmentCache)
+    {
+        ThreadsClient client = new ThreadsClient(account.ClientId, account.ClientSecret)
+        {
+            Credentials = new ThreadsCredentials()
+            {
+                CredentialType = ThreadsCredentialType.LongLived,
+                AccessToken = account.AccessToken,
+                Expiry = account.Expiry,
+                UserId = account.UserId
+            }
+        };
+
+        string? previousId = null;
+
+        foreach (PostThreadItem item in postThread.Items)
+        {
+            string text = item.Text;
+            
+            List<string> mediaUrls = new List<string>();
+            
+            if (item.QuotedPost != null)
+            {
+                mediaUrls.Add(attachmentCache.GetQuotedPostPreSignedUrl(item.QuotedPost));
+                
+                if (text != "")
+                {
+                    text += "\n\n";
+                }
+
+                text += "🐦 " + item.QuotedPost;
+            }
+
+            foreach (ObjectId attachmentId in item.AttachedMedia)
+            {
+                mediaUrls.Add(attachmentCache.GetMediaPreSignedUrl(attachmentId));
+            }
+
+            string containerId;
+            
+            if (mediaUrls.Count > 1)
+            {
+                List<string> subIds = new List<string>();
+
+                foreach (string url in mediaUrls)
+                {
+                    subIds.Add(await client.Publishing_CreateImageMediaContainer(url, isCarouselItem: true));
+                }
+
+                containerId = await client.Publishing_CreateCarouselMediaContainer(subIds, text, previousId);
+            }
+            else if (mediaUrls.Count == 1)
+            {
+                containerId = await client.Publishing_CreateImageMediaContainer(mediaUrls[0], text, previousId);
+            }
+            else
+            {
+                containerId = await client.Publishing_CreateTextMediaContainer(text, previousId);
+            }
+
+            previousId = await client.Publishing_PublishMediaContainer(containerId);
         }
     }
 }
