@@ -5,5 +5,12 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
     </PropertyGroup>
+    
+    <PropertyGroup>
+        <PackageId>BlueBirdDX.PublicApi</PackageId>
+        <Authors>OatmealDome</Authors>
+        <Description>Interact with the BlueBirdDX API.</Description>
+        <RepositoryUrl>https://github.com/OatmealDome/BlueBirdDX</RepositoryUrl>
+    </PropertyGroup>
 
 </Project>
