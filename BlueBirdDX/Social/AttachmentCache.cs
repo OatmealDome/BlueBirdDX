@@ -72,6 +72,11 @@ public class AttachmentCache
         
         return _mediaDataCache[mediaId];
     }
+
+    public string GetMediaPreSignedUrl(ObjectId mediaId)
+    {
+        return _remoteStorage.GetPreSignedUrlForFile(mediaId.ToString(), 15);
+    }
     
     public async Task AddMediaToCache(ObjectId mediaId)
     {
