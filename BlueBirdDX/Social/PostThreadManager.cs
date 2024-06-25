@@ -129,7 +129,7 @@ public class PostThreadManager
         {
             if (item.QuotedPost != null)
             {
-                await attachmentCache.AddQuotedPostToCache(item.QuotedPost);
+                await attachmentCache.AddQuotedPostToCache(item.QuotedPostSanitized!);
             }
         }
 
@@ -258,7 +258,7 @@ public class PostThreadManager
             
             if (item.QuotedPost != null)
             {
-                string[] splitUrl = item.QuotedPost.Split('/');
+                string[] splitUrl = item.QuotedPostSanitized!.Split('/');
 
                 quotedTweetId = splitUrl[^1];
             }
@@ -377,7 +377,7 @@ public class PostThreadManager
 
             if (item.QuotedPost != null)
             {
-                byte[] quotedPostData = attachmentCache.GetQuotedPostData(item.QuotedPost);
+                byte[] quotedPostData = attachmentCache.GetQuotedPostData(item.QuotedPostSanitized!);
 
                 GenericBlob blob = await client.Repo_CreateBlob(quotedPostData, "image/png");
                 
@@ -416,7 +416,7 @@ public class PostThreadManager
                     {
                         new LinkFeature()
                         {
-                            Uri = item.QuotedPost
+                            Uri = item.QuotedPostSanitized!
                         }
                     }
                 });
@@ -491,7 +491,7 @@ public class PostThreadManager
             
             if (item.QuotedPost != null)
             {
-                byte[] quotedPostData = attachmentCache.GetQuotedPostData(item.QuotedPost);
+                byte[] quotedPostData = attachmentCache.GetQuotedPostData(item.QuotedPostSanitized!);
                 
                 using MemoryStream quotedPostStream = new MemoryStream(quotedPostData);
 
@@ -503,7 +503,7 @@ public class PostThreadManager
                     text += "\n\n";
                 }
 
-                text += "🐦\u00a0" + item.QuotedPost;
+                text += "🐦\u00a0" + item.QuotedPostSanitized!;
             }
 
             foreach (ObjectId mediaId in item.AttachedMedia)
@@ -548,14 +548,14 @@ public class PostThreadManager
             
             if (item.QuotedPost != null)
             {
-                mediaUrls.Add(attachmentCache.GetQuotedPostPreSignedUrl(item.QuotedPost));
+                mediaUrls.Add(attachmentCache.GetQuotedPostPreSignedUrl(item.QuotedPostSanitized!));
                 
                 if (text != "")
                 {
                     text += "\n\n";
                 }
 
-                text += "🐦\u00a0" + item.QuotedPost;
+                text += "🐦\u00a0" + item.QuotedPostSanitized;
             }
 
             foreach (ObjectId attachmentId in item.AttachedMedia)
