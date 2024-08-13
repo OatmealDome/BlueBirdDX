@@ -584,6 +584,15 @@ public class PostThreadManager
             {
                 containerId = await client.Publishing_CreateTextMediaContainer(text, previousId);
             }
+            
+            if (mediaUrls.Count > 0)
+            {
+                // Facebook says to "wait on average 30 seconds" before publishing a media container to give the server
+                // time to process the upload.
+                // TODO: After waiting, we should probably check the media container status before proceeding.
+                // https://developers.facebook.com/docs/threads/posts
+                await Task.Delay(30 * 1000);
+            }
 
             previousId = await client.Publishing_PublishMediaContainer(containerId);
 
