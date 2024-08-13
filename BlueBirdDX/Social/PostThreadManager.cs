@@ -389,13 +389,13 @@ public class PostThreadManager
                 
                 string textWithSpacingIfNecessary;
 
-                if (item.Text == "")
+                if (post.Text == "")
                 {
                     textWithSpacingIfNecessary = "";
                 }
                 else
                 {
-                    textWithSpacingIfNecessary = item.Text + "\n\n";
+                    textWithSpacingIfNecessary = post.Text + "\n\n";
                 }
                 
                 string textWithSpacingAndLink = textWithSpacingIfNecessary + "🐦\u00a0original post";
