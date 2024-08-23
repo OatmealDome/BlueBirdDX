@@ -96,7 +96,7 @@ Create the following collections underneath your specified database:
 
 ### Adding Accounts
 
-Before you can use BlueBirdDX, you need to add an account group to the `accounts` thread. There is no UI for this in the WebApp at this time, so you will need to do this manually using a MongoDB tool, like Mongo Express.
+Before you can use BlueBirdDX, you need to add an account group to the `accounts` collection. There is no UI for this in the WebApp at this time, so you will need to do this manually using a MongoDB tool, like Mongo Express.
 
 Use the following template:
 
