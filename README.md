@@ -15,6 +15,8 @@ MongoDB is used as the database system, and media files are stored on an Amazon 
 
 BlueBirdDX expects to be run in a Docker environment, but it can be run outside of one for development purposes.
 
+Please note that the WebApp has no built-in authentication or authorization! **If you expose the WebApp directly to the Internet, anyone can make posts using your accounts!**
+
 ## Setup
 
 First, ensure that a MongoDB instance, an Amazon S3 bucket, and a Selenium WebDriver compatible browser are ready.
