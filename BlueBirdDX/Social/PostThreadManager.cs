@@ -32,6 +32,8 @@ public class PostThreadManager
 {
     private const string BlueskyUrlRegex =
         "(?<root>[(http(s)?):\\/\\/(www\\.)?a-zA-Z0-9@:%._\\+~#=-]{2,256}\\.[a-z]{2,6}\\b([-a-zA-Z0-9@:%_\\+.~#?&//=]*))";
+    private const string BlueskyHashtagRegex =
+        "(^|\\s)([#＃][\\w\\u05be\\u05f3\\u05f4]*[\\p{L}_]+[\\w\\u05be\\u05f3\\u05f4]*)";
     
     private static PostThreadManager? _instance;
     public static PostThreadManager Instance => _instance!;
@@ -44,6 +46,7 @@ public class PostThreadManager
     private readonly RemoteStorage _remoteStorage;
     
     private readonly Regex _urlRegex;
+    private readonly Regex _hashtagRegex;
 
     private PostThreadManager()
     {
@@ -55,6 +58,7 @@ public class PostThreadManager
             storageConfig.AccessKeySecret);
 
         _urlRegex = new Regex(BlueskyUrlRegex, RegexOptions.Compiled | RegexOptions.ExplicitCapture);
+        _hashtagRegex = new Regex(BlueskyHashtagRegex, RegexOptions.Compiled | RegexOptions.IgnoreCase);
     }
     
     public static void Initialize()
@@ -374,6 +378,38 @@ public class PostThreadManager
             }
 
             post.Text = builder.ToString();
+
+            builder = new StringBuilder();
+            
+            foreach (string s in _hashtagRegex.Split(post.Text))
+            {
+                if (!_hashtagRegex.IsMatch(s))
+                {
+                    builder.Append(s);
+                    
+                    continue;
+                }
+                
+                int byteStart = Encoding.UTF8.GetByteCount(builder.ToString(), 0, builder.Length);
+                
+                facets.Add(new PostFacet()
+                {
+                    Index = new FacetRange()
+                    {
+                        ByteStart = byteStart,
+                        ByteEnd = byteStart + Encoding.UTF8.GetByteCount(s)
+                    },
+                    Features = new List<GenericFeature>()
+                    {
+                        new TagFeature()
+                        {
+                            Tag = s.Substring(1)
+                        }
+                    }
+                });
+                
+                builder.Append(s);
+            }
 
             if (item.QuotedPost != null)
             {
