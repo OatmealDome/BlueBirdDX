@@ -312,6 +312,8 @@ public class PostThreadManager
         
         foreach (PostThreadItem item in postThread.Items)
         {
+            string text = item.Text.TrimEnd();
+            
             Post post = new Post()
             {
                 CreatedAt = DateTime.UtcNow
@@ -333,7 +335,7 @@ public class PostThreadManager
 
             StringBuilder builder = new StringBuilder();
             
-            foreach (string s in _urlRegex.Split(item.Text))
+            foreach (string s in _urlRegex.Split(text))
             {
                 if (!_urlRegex.IsMatch(s))
                 {
