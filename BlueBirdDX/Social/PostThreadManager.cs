@@ -635,6 +635,12 @@ public class PostThreadManager
             previousId = await client.Publishing_PublishMediaContainer(containerId);
 
             item.ThreadsId = previousId;
+            
+            if (postThread.Items.Count > 0)
+            {
+                // Wait again to give some time for the media container to be published.
+                await Task.Delay(15 * 1000);
+            }
         }
     }
 }
