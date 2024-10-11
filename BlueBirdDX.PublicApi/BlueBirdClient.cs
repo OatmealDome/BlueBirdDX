@@ -79,4 +79,15 @@ public sealed class BlueBirdClient
 
         return responseMessage;
     }
+    
+    
+    public async Task EnqueuePostThread(PostThreadApi apiThread)
+    {
+        apiThread.State = 1;
+        
+        string json = JsonSerializer.Serialize(apiThread);
+
+        await SendRequestInternal(HttpMethod.Post, "/api/v1/thread",
+            new StringContent(json, Encoding.UTF8, "application/json"));
+    }
 }
