@@ -90,4 +90,18 @@ public sealed class BlueBirdClient
         await SendRequestInternal(HttpMethod.Post, "/api/v1/thread",
             new StringContent(json, Encoding.UTF8, "application/json"));
     }
+    
+    public async Task<string> UploadMedia(string name, byte[] data, string altText = "")
+    {
+        MultipartFormDataContent content = new MultipartFormDataContent();
+        content.Add(new StringContent(name), "name");
+        content.Add(new StringContent(altText), "altText");
+        content.Add(new ByteArrayContent(data), "file", "mediaFile");
+
+        HttpResponseMessage response = await SendRequestInternal(HttpMethod.Post, "/api/v1/media", content);
+
+        UploadedMediaApi media = (await response.Content.ReadFromJsonAsync<UploadedMediaApi>())!;
+
+        return media.Id;
+    }
 }
