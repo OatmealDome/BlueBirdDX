@@ -1,12 +1,8 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using BlueBirdDX.Common.Account;
-using BlueBirdDX.Common.Media;
 using BlueBirdDX.Common.Post;
-using BlueBirdDX.Common.Storage;
 using BlueBirdDX.Common.Util;
-using BlueBirdDX.Config;
-using BlueBirdDX.Config.Storage;
 using BlueBirdDX.Database;
 using BlueBirdDX.Social.Twitter;
 using BlueBirdDX.Util;
@@ -44,8 +40,6 @@ public class PostThreadManager
         Log.ForContext(Constants.SourceContextPropertyName, "PostThreadManager");
     
     private readonly IMongoCollection<PostThread> _postThreadCollection;
-
-    private readonly RemoteStorage _remoteStorage;
     
     private readonly Regex _urlRegex;
     private readonly Regex _hashtagRegex;
@@ -55,11 +49,6 @@ public class PostThreadManager
     private PostThreadManager()
     {
         _postThreadCollection = DatabaseManager.Instance.GetCollection<PostThread>("threads");
-
-        RemoteStorageConfig storageConfig = BbConfig.Instance.RemoteStorage;
-        
-        _remoteStorage = new RemoteStorage(storageConfig.ServiceUrl, storageConfig.Bucket, storageConfig.AccessKey,
-            storageConfig.AccessKeySecret);
 
         _urlRegex = new Regex(BlueskyUrlRegex, RegexOptions.Compiled | RegexOptions.ExplicitCapture);
         _hashtagRegex = new Regex(BlueskyHashtagRegex, RegexOptions.Compiled | RegexOptions.IgnoreCase);
