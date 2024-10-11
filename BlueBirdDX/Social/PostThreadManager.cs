@@ -281,11 +281,14 @@ public class PostThreadManager
                 {
                     string altText = attachmentCache.GetMediaAltText(mediaId);
 
-                    string uploadedMediaId =
-                        await client.UploadImage(attachmentCache.GetMediaData(mediaId, SocialPlatform.Twitter),
-                            altText.Length > 0 ? altText : null);
-                    
-                    uploadedMediaIds.Add(uploadedMediaId);
+                    await _resiliencePipeline.ExecuteAsync(async (_) =>
+                    {
+                        string uploadedMediaId =
+                            await client.UploadImage(attachmentCache.GetMediaData(mediaId, SocialPlatform.Twitter),
+                                altText.Length > 0 ? altText : null);
+
+                        uploadedMediaIds.Add(uploadedMediaId);
+                    });
                 }
 
                 twitterMediaIds = uploadedMediaIds.ToArray();
@@ -423,13 +426,16 @@ public class PostThreadManager
             if (item.QuotedPost != null)
             {
                 byte[] quotedPostData = attachmentCache.GetQuotedPostData(item.QuotedPostSanitized!);
-
-                GenericBlob blob = await client.Repo_CreateBlob(quotedPostData, "image/png");
                 
-                images.Add(new EmbeddedImage()
+                await _resiliencePipeline.ExecuteAsync(async (_) =>
                 {
-                    Image = blob,
-                    AltText = "A screenshot of a tweet on Twitter."
+                    GenericBlob blob = await client.Repo_CreateBlob(quotedPostData, "image/png");
+                
+                    images.Add(new EmbeddedImage()
+                    {
+                        Image = blob,
+                        AltText = "A screenshot of a tweet on Twitter."
+                    });
                 });
                 
                 string textWithSpacingIfNecessary;
@@ -469,14 +475,17 @@ public class PostThreadManager
             
             foreach (ObjectId mediaId in item.AttachedMedia)
             {
-                GenericBlob blob = await client.Repo_CreateBlob(
-                    attachmentCache.GetMediaData(mediaId, SocialPlatform.Bluesky),
-                    attachmentCache.GetMediaMimeType(mediaId, SocialPlatform.Bluesky));
-                
-                images.Add(new EmbeddedImage()
+                await _resiliencePipeline.ExecuteAsync(async (_) =>
                 {
-                    Image = blob,
-                    AltText = attachmentCache.GetMediaAltText(mediaId)
+                    GenericBlob blob = await client.Repo_CreateBlob(
+                        attachmentCache.GetMediaData(mediaId, SocialPlatform.Bluesky),
+                        attachmentCache.GetMediaMimeType(mediaId, SocialPlatform.Bluesky));
+                
+                    images.Add(new EmbeddedImage()
+                    {
+                        Image = blob,
+                        AltText = attachmentCache.GetMediaAltText(mediaId)
+                    }); 
                 });
             }
 
@@ -543,8 +552,11 @@ public class PostThreadManager
                 
                 using MemoryStream quotedPostStream = new MemoryStream(quotedPostData);
 
-                attachments.Add(await client.UploadMedia(quotedPostStream,
-                    description: "A screenshot of a Tweet on Twitter."));
+                await _resiliencePipeline.ExecuteAsync(async (_) =>
+                {
+                    attachments.Add(await client.UploadMedia(quotedPostStream,
+                        description: "A screenshot of a Tweet on Twitter.")); 
+                });
 
                 if (text != "")
                 {
@@ -614,7 +626,7 @@ public class PostThreadManager
                 mediaUrls.Add(attachmentCache.GetMediaPreSignedUrl(attachmentId));
             }
 
-            string containerId;
+            string containerId = null!;
             
             if (mediaUrls.Count > 1)
             {
@@ -622,18 +634,30 @@ public class PostThreadManager
 
                 foreach (string url in mediaUrls)
                 {
-                    subIds.Add(await client.Publishing_CreateImageMediaContainer(url, isCarouselItem: true));
+                    await _resiliencePipeline.ExecuteAsync(async (_) =>
+                    {
+                        subIds.Add(await client.Publishing_CreateImageMediaContainer(url, isCarouselItem: true));
+                    });
                 }
 
-                containerId = await client.Publishing_CreateCarouselMediaContainer(subIds, text, previousId);
+                await _resiliencePipeline.ExecuteAsync(async (_) =>
+                {
+                    containerId = await client.Publishing_CreateCarouselMediaContainer(subIds, text, previousId);
+                });
             }
             else if (mediaUrls.Count == 1)
             {
-                containerId = await client.Publishing_CreateImageMediaContainer(mediaUrls[0], text, previousId);
+                await _resiliencePipeline.ExecuteAsync(async (_) =>
+                {
+                    containerId = await client.Publishing_CreateImageMediaContainer(mediaUrls[0], text, previousId);
+                });
             }
             else
             {
-                containerId = await client.Publishing_CreateTextMediaContainer(text, previousId);
+                await _resiliencePipeline.ExecuteAsync(async (_) =>
+                {
+                    containerId = await client.Publishing_CreateTextMediaContainer(text, previousId);
+                });
             }
             
             if (mediaUrls.Count > 0)
