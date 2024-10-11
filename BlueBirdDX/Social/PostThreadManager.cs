@@ -23,6 +23,8 @@ using OatmealDome.Airship.Bluesky.Feed;
 using OatmealDome.Airship.Bluesky.Feed.Facets;
 using OatmealDome.Unravel;
 using OatmealDome.Unravel.Authentication;
+using Polly;
+using Polly.Retry;
 using Serilog;
 using Serilog.Core;
 
@@ -48,6 +50,8 @@ public class PostThreadManager
     private readonly Regex _urlRegex;
     private readonly Regex _hashtagRegex;
 
+    private readonly ResiliencePipeline _resiliencePipeline;
+
     private PostThreadManager()
     {
         _postThreadCollection = DatabaseManager.Instance.GetCollection<PostThread>("threads");
@@ -59,6 +63,17 @@ public class PostThreadManager
 
         _urlRegex = new Regex(BlueskyUrlRegex, RegexOptions.Compiled | RegexOptions.ExplicitCapture);
         _hashtagRegex = new Regex(BlueskyHashtagRegex, RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        
+        RetryStrategyOptions retryOptions = new RetryStrategyOptions
+        {
+            BackoffType = DelayBackoffType.Linear,
+            MaxRetryAttempts = 3,
+            Delay = TimeSpan.FromSeconds(5)
+        };
+
+        _resiliencePipeline = new ResiliencePipelineBuilder()
+            .AddRetry(retryOptions)
+            .Build();
     }
     
     public static void Initialize()
@@ -287,8 +302,11 @@ public class PostThreadManager
                 twitterMediaIds = uploadedMediaIds.ToArray();
             }
 
-            previousId = await client.Tweet(item.Text, quotedTweetId: quotedTweetId, replyToTweetId: previousId,
-                mediaIds: twitterMediaIds);
+            await _resiliencePipeline.ExecuteAsync(async (token) =>
+            {
+                previousId = await client.Tweet(item.Text, quotedTweetId: quotedTweetId, replyToTweetId: previousId,
+                    mediaIds: twitterMediaIds);
+            });
 
             item.TwitterId = previousId;
         }
@@ -491,7 +509,10 @@ public class PostThreadManager
                 post.Facets = facets;
             }
 
-            previousPost = await client.Post_Create(post);
+            await _resiliencePipeline.ExecuteAsync(async (token) =>
+            {
+                previousPost = await client.Post_Create(post);
+            });
 
             if (rootPost == null)
             {
@@ -553,10 +574,13 @@ public class PostThreadManager
                     description: attachmentCache.GetMediaAltText(mediaId)));
             }
 
-            Status status = await client.PublishStatus(text, replyStatusId: previousId,
-                mediaIds: attachments.Count > 0 ? attachments.Select(a => a.Id) : null, visibility: Visibility.Public);
-
-            previousId = status.Id;
+            await _resiliencePipeline.ExecuteAsync(async (token) =>
+            {
+                Status status = await client.PublishStatus(text, replyStatusId: previousId,
+                    mediaIds: attachments.Count > 0 ? attachments.Select(a => a.Id) : null, visibility: Visibility.Public);
+                
+                previousId = status.Id;
+            });
 
             item.MastodonId = previousId;
         }
@@ -632,7 +656,10 @@ public class PostThreadManager
                 await Task.Delay(30 * 1000);
             }
 
-            previousId = await client.Publishing_PublishMediaContainer(containerId);
+            await _resiliencePipeline.ExecuteAsync(async (token) =>
+            {
+                previousId = await client.Publishing_PublishMediaContainer(containerId);
+            });
 
             item.ThreadsId = previousId;
             
