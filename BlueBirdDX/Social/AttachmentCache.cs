@@ -21,8 +21,17 @@ namespace BlueBirdDX.Social;
 
 public class AttachmentCache
 {
+    // https://developer.x.com/en/docs/x-api/v1/media/upload-media/uploading-media/media-best-practices
+    private const int TwitterMaximumImageSize = 5242880;
+    
     // https://github.com/bluesky-social/social-app/blob/f0cd8ab6f46f45c79de5aaf6eb7def782dc99836/src/state/models/media/image.ts#L22
     private const int BlueskyMaximumImageSize = 976560;
+    
+    // https://docs.joinmastodon.org/user/posting/
+    private const int MastodonMaximumImageSize = 16777216;
+    
+    // https://support.buffer.com/article/617-ideal-image-sizes-and-formats-for-your-posts
+    private const int ThreadsMaximumImageSize = 8388608;
     
     private readonly RemoteStorage _remoteStorage;
     private readonly IMongoCollection<UploadedMedia> _uploadedMediaCollection;
@@ -30,8 +39,15 @@ public class AttachmentCache
     private readonly Dictionary<ObjectId, UploadedMedia>
         _mediaDocumentCache = new Dictionary<ObjectId, UploadedMedia>();
     private readonly Dictionary<ObjectId, byte[]> _mediaDataCache = new Dictionary<ObjectId, byte[]>();
-    private readonly Dictionary<ObjectId, byte[]> _mediaResizedDataCache = new Dictionary<ObjectId, byte[]>();
-
+    private readonly Dictionary<SocialPlatform, Dictionary<ObjectId, byte[]>> _mediaResizedDataCache =
+        new Dictionary<SocialPlatform, Dictionary<ObjectId, byte[]>>()
+        {
+            { SocialPlatform.Twitter, new Dictionary<ObjectId, byte[]>() },
+            { SocialPlatform.Bluesky, new Dictionary<ObjectId, byte[]>() },
+            { SocialPlatform.Mastodon, new Dictionary<ObjectId, byte[]>() },
+            { SocialPlatform.Threads, new Dictionary<ObjectId, byte[]>() }
+        };
+    
     private readonly Dictionary<string, byte[]> _quotedPostCache = new Dictionary<string, byte[]>();
     
     public AttachmentCache()
@@ -46,12 +62,9 @@ public class AttachmentCache
 
     public string GetMediaMimeType(ObjectId mediaId, SocialPlatform platform)
     {
-        if (platform == SocialPlatform.Bluesky)
+        if (_mediaResizedDataCache[platform].ContainsKey(mediaId))
         {
-            if (_mediaResizedDataCache.ContainsKey(mediaId))
-            {
-                return "image/jpeg";
-            }
+            return "image/jpeg";
         }
         
         return _mediaDocumentCache[mediaId].MimeType;
@@ -64,12 +77,9 @@ public class AttachmentCache
     
     public byte[] GetMediaData(ObjectId mediaId, SocialPlatform platform)
     {
-        if (platform == SocialPlatform.Bluesky)
+        if (_mediaResizedDataCache[platform].TryGetValue(mediaId, out byte[]? data))
         {
-            if (_mediaResizedDataCache.TryGetValue(mediaId, out byte[]? resizedData))
-            {
-                return resizedData;
-            }
+            return data;
         }
         
         return _mediaDataCache[mediaId];
@@ -93,16 +103,17 @@ public class AttachmentCache
         byte[] data = await _remoteStorage.DownloadFile("media/" + mediaId.ToString());
         _mediaDataCache[mediaId] = data;
 
-        if (data.Length > BlueskyMaximumImageSize)
+        async Task<byte[]> ResizeImageToFitSizeLimit(int maxSize)
         {
             int quality = 100;
             byte[] resizedData = data;
 
-            while (resizedData.Length > BlueskyMaximumImageSize)
+            while (resizedData.Length > maxSize)
             {
                 if (quality == 0)
                 {
-                    throw new Exception($"Image {mediaId} is too large and can't be resized to fit on Bluesky");
+                    throw new Exception(
+                        $"Image {mediaId} is too large and can't be resized to fit within {maxSize} bytes");
                 }
             
                 using MemoryStream inputStream = new MemoryStream(data);
@@ -120,7 +131,31 @@ public class AttachmentCache
                 resizedData = outputStream.ToArray();
             }
 
-            _mediaResizedDataCache[mediaId] = resizedData;
+            return resizedData;
+        }
+
+        if (data.Length > TwitterMaximumImageSize)
+        {
+            _mediaResizedDataCache[SocialPlatform.Twitter][mediaId] =
+                await ResizeImageToFitSizeLimit(TwitterMaximumImageSize);
+        }
+
+        if (data.Length > BlueskyMaximumImageSize)
+        {
+            _mediaResizedDataCache[SocialPlatform.Bluesky][mediaId] =
+                await ResizeImageToFitSizeLimit(BlueskyMaximumImageSize);
+        }
+
+        if (data.Length > MastodonMaximumImageSize)
+        {
+            _mediaResizedDataCache[SocialPlatform.Mastodon][mediaId] =
+                await ResizeImageToFitSizeLimit(MastodonMaximumImageSize);
+        }
+
+        if (data.Length > ThreadsMaximumImageSize)
+        {
+            _mediaResizedDataCache[SocialPlatform.Threads][mediaId] =
+                await ResizeImageToFitSizeLimit(ThreadsMaximumImageSize);
         }
     }
 
