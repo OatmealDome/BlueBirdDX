@@ -18,11 +18,6 @@ jobs:
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: '8.0.x'
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
       
       - name: Clear NuGet Caches
         run: dotnet nuget locals all --clear
@@ -33,17 +28,9 @@ jobs:
           NuGet_SourceUrl: https://nuget.pkg.github.com/oatmealdome/index.json
           NuGet_SourceUserName: ${{ github.repository_owner }}
           NuGet_SourcePassword: ${{ secrets.GHCR_INSTALL_PAT }}
-      
-      - name: Install dependencies (Node)
-        working-directory: ./BlueBirdDX.TextWrapper
-        run: npm ci
-        
+
       - name: Build (.NET)
         run: dotnet build --configuration Release --no-restore
-
-      - name: Build (Node)
-        working-directory: ./BlueBirdDX.TextWrapper
-        run: npm run build
   docker-build:
     runs-on: ubuntu-latest
 
