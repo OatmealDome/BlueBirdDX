@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using BlueBirdDX.Config.Database;
 using BlueBirdDX.Config.Logging;
 using BlueBirdDX.Config.Storage;
+using BlueBirdDX.Config.TextWrapper;
 using BlueBirdDX.Config.WebDriver;
 
 namespace BlueBirdDX.Config;
@@ -42,12 +43,20 @@ public class BbConfig
         set;
     }
 
+    [JsonPropertyName("TextWrapper")]
+    public TextWrapperConfig TextWrapper
+    {
+        get;
+        set;
+    }
+
     public BbConfig()
     {
         Logging = new LoggingConfig();
         Database = new DatabaseConfig();
         RemoteStorage = new RemoteStorageConfig();
         WebDriver = new WebDriverConfig();
+        TextWrapper = new TextWrapperConfig();
     }
 
     public static void Load()
