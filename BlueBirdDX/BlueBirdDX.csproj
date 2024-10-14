@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
@@ -25,7 +25,7 @@
       <PackageReference Include="Mastonet" Version="3.1.1" />
       <PackageReference Include="MongoDB.Driver" Version="2.24.0" />
       <PackageReference Include="oatmealdome.airship" Version="2.3.1" />
-      <PackageReference Include="OatmealDome.Unravel" Version="1.1.2" />
+      <PackageReference Include="OatmealDome.Unravel" Version="1.2.0" />
       <PackageReference Include="Polly" Version="8.4.2" />
       <PackageReference Include="Quartz" Version="3.8.1" />
       <PackageReference Include="Selenium.WebDriver" Version="4.19.0" />
