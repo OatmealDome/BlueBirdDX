@@ -2,6 +2,7 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using BlueBirdDX.Common.Media;
+using BlueBirdDX.Common.Post;
 using BlueBirdDX.Common.Storage;
 using BlueBirdDX.Config;
 using BlueBirdDX.Config.Storage;
@@ -35,6 +36,7 @@ public class AttachmentCache
     
     private readonly RemoteStorage _remoteStorage;
     private readonly IMongoCollection<UploadedMedia> _uploadedMediaCollection;
+    private readonly IMongoCollection<PostThread> _postThreadCollection;
 
     private readonly Dictionary<ObjectId, UploadedMedia>
         _mediaDocumentCache = new Dictionary<ObjectId, UploadedMedia>();
@@ -48,7 +50,10 @@ public class AttachmentCache
             { SocialPlatform.Threads, new Dictionary<ObjectId, byte[]>() }
         };
     
-    private readonly Dictionary<string, byte[]> _quotedPostCache = new Dictionary<string, byte[]>();
+    private readonly Dictionary<string, byte[]> _quotedPostImageCache = new Dictionary<string, byte[]>();
+
+    private readonly Dictionary<string, PostThreadItem> _quotedPostBlueBirdItemCache =
+        new Dictionary<string, PostThreadItem>();
     
     public AttachmentCache()
     {
@@ -58,6 +63,7 @@ public class AttachmentCache
             storageConfig.AccessKeySecret);
         
         _uploadedMediaCollection = DatabaseManager.Instance.GetCollection<UploadedMedia>("media");
+        _postThreadCollection = DatabaseManager.Instance.GetCollection<PostThread>("threads");
     }
 
     public string GetMediaMimeType(ObjectId mediaId, SocialPlatform platform)
@@ -170,6 +176,16 @@ public class AttachmentCache
 
     public async Task AddQuotedPostToCache(string url)
     {
+        string tweetId = url.Split('/')[^1];
+
+        PostThreadItem? postThreadItem = _postThreadCollection.AsQueryable().SelectMany(t => t.Items)
+            .FirstOrDefault(i => i.TwitterId == tweetId);
+
+        if (postThreadItem != null)
+        {
+            _quotedPostBlueBirdItemCache[url] = postThreadItem;
+        }
+            
         ChromeOptions options = new ChromeOptions();
         options.AddArgument("--ignore-certificate-errors");
         options.AddArgument("--hide-scrollbars");
@@ -229,17 +245,22 @@ public class AttachmentCache
 
         byte[] data = screenshot.AsByteArray;
 
-        _quotedPostCache[url] = data;
+        _quotedPostImageCache[url] = data;
         
         _remoteStorage.TransferFile(ComputeRemoteFileNameForQuotedPost(url), data, "image/png");
     }
 
-    public byte[] GetQuotedPostData(string url)
+    public PostThreadItem? GetQuotedPostBlueBirdItem(string url)
     {
-        return _quotedPostCache[url];
+        return _quotedPostBlueBirdItemCache.GetValueOrDefault(url);
     }
 
-    public string GetQuotedPostPreSignedUrl(string url)
+    public byte[] GetQuotedPostImageData(string url)
+    {
+        return _quotedPostImageCache[url];
+    }
+
+    public string GetQuotedPostImagePreSignedUrl(string url)
     {
         return _remoteStorage.GetPreSignedUrlForFile(ComputeRemoteFileNameForQuotedPost(url), 15);
     }

@@ -16,6 +16,7 @@ using OatmealDome.Airship.ATProtocol.Lexicon.Types.Blob;
 using OatmealDome.Airship.Bluesky;
 using OatmealDome.Airship.Bluesky.Embed;
 using OatmealDome.Airship.Bluesky.Embed.Image;
+using OatmealDome.Airship.Bluesky.Embed.Record;
 using OatmealDome.Airship.Bluesky.Feed;
 using OatmealDome.Airship.Bluesky.Feed.Facets;
 using OatmealDome.Unravel;
@@ -404,54 +405,67 @@ public class PostThreadManager
                 });
             }
 
+            StrongRef? quotedRef = null;
+
             if (item.QuotedPost != null)
             {
-                byte[] quotedPostData = attachmentCache.GetQuotedPostData(item.QuotedPostSanitized!);
+                string sanitizedUrl = item.QuotedPostSanitized!;
                 
-                await _resiliencePipeline.ExecuteAsync(async (_) =>
-                {
-                    GenericBlob blob = await client.Repo_CreateBlob(quotedPostData, "image/png");
-                
-                    images.Add(new EmbeddedImage()
-                    {
-                        Image = blob,
-                        AltText = "A screenshot of a tweet on Twitter."
-                    });
-                });
-                
-                string textWithSpacingIfNecessary;
+                PostThreadItem? quotedItem = attachmentCache.GetQuotedPostBlueBirdItem(sanitizedUrl);
 
-                if (post.Text == "")
+                if (quotedItem != null && quotedItem.BlueskyThisRef != null)
                 {
-                    textWithSpacingIfNecessary = "";
+                    quotedRef = BbCommonRefToAirshipRef(quotedItem.BlueskyThisRef);
                 }
                 else
                 {
-                    textWithSpacingIfNecessary = post.Text + "\n\n";
-                }
+                    byte[] quotedPostData = attachmentCache.GetQuotedPostImageData(sanitizedUrl);
                 
-                string textWithSpacingAndLink = textWithSpacingIfNecessary + "🐦\u00a0original post";
-
-                int linkStartIdx = Encoding.UTF8.GetByteCount(textWithSpacingIfNecessary);
-                int linkEndIdx = Encoding.UTF8.GetByteCount(textWithSpacingAndLink);
-
-                post.Text = textWithSpacingAndLink;
-
-                facets.Add(new PostFacet()
-                {
-                    Index = new FacetRange()
+                    await _resiliencePipeline.ExecuteAsync(async (_) =>
                     {
-                        ByteStart = linkStartIdx,
-                        ByteEnd = linkEndIdx
-                    },
-                    Features = new List<GenericFeature>()
-                    {
-                        new LinkFeature()
+                        GenericBlob blob = await client.Repo_CreateBlob(quotedPostData, "image/png");
+                
+                        images.Add(new EmbeddedImage()
                         {
-                            Uri = item.QuotedPostSanitized!
-                        }
+                            Image = blob,
+                            AltText = "A screenshot of a tweet on Twitter."
+                        });
+                    });
+                
+                    string textWithSpacingIfNecessary;
+
+                    if (post.Text == "")
+                    {
+                        textWithSpacingIfNecessary = "";
                     }
-                });
+                    else
+                    {
+                        textWithSpacingIfNecessary = post.Text + "\n\n";
+                    }
+                
+                    string textWithSpacingAndLink = textWithSpacingIfNecessary + "🐦\u00a0original post";
+
+                    int linkStartIdx = Encoding.UTF8.GetByteCount(textWithSpacingIfNecessary);
+                    int linkEndIdx = Encoding.UTF8.GetByteCount(textWithSpacingAndLink);
+
+                    post.Text = textWithSpacingAndLink;
+
+                    facets.Add(new PostFacet()
+                    {
+                        Index = new FacetRange()
+                        {
+                            ByteStart = linkStartIdx,
+                            ByteEnd = linkEndIdx
+                        },
+                        Features = new List<GenericFeature>()
+                        {
+                            new LinkFeature()
+                            {
+                                Uri = sanitizedUrl
+                            }
+                        }
+                    });
+                }
             }
             
             foreach (ObjectId mediaId in item.AttachedMedia)
@@ -470,11 +484,32 @@ public class PostThreadManager
                 });
             }
 
-            if (images.Count > 0)
+            if (images.Count > 0 && quotedRef != null)
+            {
+                embed = new RecordWithMediaEmbed()
+                {
+                    RecordEmbed = new RecordEmbed()
+                    {
+                        Record = quotedRef
+                    },
+                    MediaEmbed = new ImagesEmbed()
+                    {
+                        Images = images
+                    }
+                };
+            }
+            else if (images.Count > 0)
             {
                 embed = new ImagesEmbed()
                 {
                     Images = images
+                };
+            }
+            else if (quotedRef != null)
+            {
+                embed = new RecordEmbed()
+                {
+                    Record = quotedRef
                 };
             }
             
@@ -529,7 +564,9 @@ public class PostThreadManager
             
             if (item.QuotedPost != null)
             {
-                byte[] quotedPostData = attachmentCache.GetQuotedPostData(item.QuotedPostSanitized!);
+                string sanitizedUrl = item.QuotedPostSanitized!;
+                
+                byte[] quotedPostData = attachmentCache.GetQuotedPostImageData(sanitizedUrl);
                 
                 using MemoryStream quotedPostStream = new MemoryStream(quotedPostData);
 
@@ -538,13 +575,29 @@ public class PostThreadManager
                     attachments.Add(await client.UploadMedia(quotedPostStream,
                         description: "A screenshot of a Tweet on Twitter.")); 
                 });
+                
+                PostThreadItem? quotedItem = attachmentCache.GetQuotedPostBlueBirdItem(sanitizedUrl);
 
-                if (text != "")
+                if (quotedItem != null && quotedItem.MastodonId != null)
                 {
-                    text += "\n\n";
-                }
+                    Account mastodonAccount = await client.GetCurrentUser();
+                    
+                    if (text != "")
+                    {
+                        text += "\n\n";
+                    }
 
-                text += "🐦\u00a0" + item.QuotedPostSanitized!;
+                    text += "🐘\u00a0" + mastodonAccount.ProfileUrl + "/" + quotedItem.MastodonId;
+                }
+                else
+                {
+                    if (text != "")
+                    {
+                        text += "\n\n";
+                    }
+
+                    text += "🐦\u00a0" + item.QuotedPostSanitized!;
+                }
             }
 
             foreach (ObjectId mediaId in item.AttachedMedia)
@@ -589,17 +642,30 @@ public class PostThreadManager
             string text = item.Text;
             
             List<string> mediaUrls = new List<string>();
+
+            string? quotedPostId = null;
             
             if (item.QuotedPost != null)
             {
-                mediaUrls.Add(attachmentCache.GetQuotedPostPreSignedUrl(item.QuotedPostSanitized!));
+                string sanitizedUrl = item.QuotedPostSanitized!;
                 
-                if (text != "")
-                {
-                    text += "\n\n";
-                }
+                PostThreadItem? quotedItem = attachmentCache.GetQuotedPostBlueBirdItem(sanitizedUrl);
 
-                text += "🐦\u00a0" + item.QuotedPostSanitized;
+                if (quotedItem != null && quotedItem.ThreadsId != null)
+                {
+                    quotedPostId = quotedItem.ThreadsId;
+                }
+                else
+                {
+                    mediaUrls.Add(attachmentCache.GetQuotedPostImagePreSignedUrl(sanitizedUrl));
+                
+                    if (text != "")
+                    {
+                        text += "\n\n";
+                    }
+
+                    text += "🐦\u00a0" + item.QuotedPostSanitized;
+                }
             }
 
             foreach (ObjectId attachmentId in item.AttachedMedia)
@@ -623,21 +689,25 @@ public class PostThreadManager
 
                 await _resiliencePipeline.ExecuteAsync(async (_) =>
                 {
-                    containerId = await client.Publishing_CreateCarouselMediaContainer(subIds, text, previousId);
+                    containerId =
+                        await client.Publishing_CreateCarouselMediaContainer(subIds, text, previousId,
+                            quotedPostId: quotedPostId);
                 });
             }
             else if (mediaUrls.Count == 1)
             {
                 await _resiliencePipeline.ExecuteAsync(async (_) =>
                 {
-                    containerId = await client.Publishing_CreateImageMediaContainer(mediaUrls[0], text, previousId);
+                    containerId = await client.Publishing_CreateImageMediaContainer(mediaUrls[0], text, previousId,
+                        quotedPostId: quotedPostId);
                 });
             }
             else
             {
                 await _resiliencePipeline.ExecuteAsync(async (_) =>
                 {
-                    containerId = await client.Publishing_CreateTextMediaContainer(text, previousId);
+                    containerId =
+                        await client.Publishing_CreateTextMediaContainer(text, previousId, quotedPostId: quotedPostId);
                 });
             }
             
