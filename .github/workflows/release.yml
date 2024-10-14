@@ -52,8 +52,7 @@ jobs:
       - name: Build TextWrapper
         uses: docker/build-push-action@v5
         with:
-          context: .
-          file: ./BlueBirdDX.TextWrapper/Dockerfile
+          context: ./BlueBirdDX.TextWrapper
           platforms: linux/amd64,linux/arm64
           push: true
           build-args: |
