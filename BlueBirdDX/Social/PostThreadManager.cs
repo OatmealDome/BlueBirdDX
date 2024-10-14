@@ -1,11 +1,12 @@
 using System.Text;
-using System.Text.RegularExpressions;
 using BlueBirdDX.Common.Account;
 using BlueBirdDX.Common.Post;
 using BlueBirdDX.Common.Util;
+using BlueBirdDX.Config;
 using BlueBirdDX.Database;
 using BlueBirdDX.Social.Twitter;
 using BlueBirdDX.Util;
+using BlueBirdDX.Util.TextWrapper;
 using Mastonet;
 using Mastonet.Entities;
 using MongoDB.Bson;
@@ -28,11 +29,6 @@ namespace BlueBirdDX.Social;
 
 public class PostThreadManager
 {
-    private const string BlueskyUrlRegex =
-        "(?<root>[(http(s)?):\\/\\/(www\\.)?a-zA-Z0-9@:%._\\+~#=-]{2,256}\\.[a-z]{2,6}\\b([-a-zA-Z0-9@:%_\\+.~#?&//=]*))";
-    private const string BlueskyHashtagRegex =
-        "(^|\\s)([#＃][\\w\\u05be\\u05f3\\u05f4]*[\\p{L}_]+[\\w\\u05be\\u05f3\\u05f4]*)";
-    
     private static PostThreadManager? _instance;
     public static PostThreadManager Instance => _instance!;
 
@@ -41,17 +37,13 @@ public class PostThreadManager
     
     private readonly IMongoCollection<PostThread> _postThreadCollection;
     
-    private readonly Regex _urlRegex;
-    private readonly Regex _hashtagRegex;
-
     private readonly ResiliencePipeline _resiliencePipeline;
+
+    private readonly TextWrapperClient _textWrapperClient;
 
     private PostThreadManager()
     {
         _postThreadCollection = DatabaseManager.Instance.GetCollection<PostThread>("threads");
-
-        _urlRegex = new Regex(BlueskyUrlRegex, RegexOptions.Compiled | RegexOptions.ExplicitCapture);
-        _hashtagRegex = new Regex(BlueskyHashtagRegex, RegexOptions.Compiled | RegexOptions.IgnoreCase);
         
         RetryStrategyOptions retryOptions = new RetryStrategyOptions
         {
@@ -63,6 +55,8 @@ public class PostThreadManager
         _resiliencePipeline = new ResiliencePipelineBuilder()
             .AddRetry(retryOptions)
             .Build();
+
+        _textWrapperClient = new TextWrapperClient(BbConfig.Instance.TextWrapper.ServerUrl);
     }
     
     public static void Initialize()
@@ -344,34 +338,28 @@ public class PostThreadManager
             List<PostFacet> facets = new List<PostFacet>();
 
             StringBuilder builder = new StringBuilder();
+
+            List<ExtractedChunk> foundUrls = await _textWrapperClient.ExtractUrls(text);
             
-            foreach (string s in _urlRegex.Split(text))
+            int i = 0;
+            foreach (ExtractedChunk urlChunk in foundUrls)
             {
-                if (!_urlRegex.IsMatch(s))
-                {
-                    builder.Append(s);
-            
-                    continue;
-                }
-
-                string urlString;
-
-                if (!s.StartsWith("http"))
-                {
-                    urlString = "https://" + s;
-                }
-                else
-                {
-                    urlString = s;
-                }
-                
+                builder.Append(text.Substring(i, urlChunk.Start - i));
+        
                 int byteStart = Encoding.UTF8.GetByteCount(builder.ToString(), 0, builder.Length);
-                
-                Uri uri = new Uri(urlString);
+        
+                string fixedUrl = urlChunk.Data;
+
+                if (!fixedUrl.StartsWith("http"))
+                {
+                    fixedUrl = "https://" + fixedUrl;
+                }
+        
+                Uri uri = new Uri(fixedUrl);
         
                 string replacement = $"🔗\u00a0{uri.Host}";
                 builder.Append(replacement);
-
+        
                 facets.Add(new PostFacet()
                 {
                     Index = new FacetRange()
@@ -383,44 +371,37 @@ public class PostThreadManager
                     {
                         new LinkFeature()
                         {
-                            Uri = urlString
+                            Uri = fixedUrl
                         }
                     }
                 });
+
+                i = urlChunk.End;
             }
+            
+            builder.Append(text, i, text.Length - i);
 
             post.Text = builder.ToString();
 
-            builder = new StringBuilder();
+            List<ExtractedChunk> foundHashtags = await _textWrapperClient.ExtractHashtags(post.Text);
             
-            foreach (string s in _hashtagRegex.Split(post.Text))
+            foreach (ExtractedChunk foundHashtag in foundHashtags)
             {
-                if (!_hashtagRegex.IsMatch(s))
-                {
-                    builder.Append(s);
-                    
-                    continue;
-                }
-                
-                int byteStart = Encoding.UTF8.GetByteCount(builder.ToString(), 0, builder.Length);
-                
                 facets.Add(new PostFacet()
                 {
                     Index = new FacetRange()
                     {
-                        ByteStart = byteStart,
-                        ByteEnd = byteStart + Encoding.UTF8.GetByteCount(s)
+                        ByteStart = Encoding.UTF8.GetByteCount(post.Text.Substring(0, foundHashtag.Start)),
+                        ByteEnd = Encoding.UTF8.GetByteCount(post.Text.Substring(0, foundHashtag.End))
                     },
                     Features = new List<GenericFeature>()
                     {
                         new TagFeature()
                         {
-                            Tag = s.Substring(1)
+                            Tag = foundHashtag.Data
                         }
                     }
                 });
-                
-                builder.Append(s);
             }
 
             if (item.QuotedPost != null)
