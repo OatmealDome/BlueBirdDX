@@ -44,11 +44,6 @@ public sealed class BlueBirdClient
             urlBuilder.Append(_baseUrl);
         }
 
-        if (endpoint.Length == 0)
-        {
-            throw new Exception("");
-        }
-
         urlBuilder.Append(endpoint);
 
         string url = urlBuilder.ToString();
