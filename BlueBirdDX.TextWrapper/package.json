@@ -1,0 +1,26 @@
+{
+  "name": "me.oatmealdome.bluebirddx.twittertextwrapper",
+  "version": "1.0.0",
+  "description": "Wraps the twitter-text library and exposes parts of it over a REST API.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OatmealDome/BlueBirdDX.git"
+  },
+  "author": "OatmealDome",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/OatmealDome/BlueBirdDX/issues"
+  },
+  "homepage": "https://github.com/OatmealDome/BlueBirdDX#readme",
+  "dependencies": {
+    "express": "^4.21.1",
+    "twitter-text": "^3.1.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.7"
+  }
+}
