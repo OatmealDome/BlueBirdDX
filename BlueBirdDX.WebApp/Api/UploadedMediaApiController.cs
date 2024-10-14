@@ -1,6 +1,6 @@
 using BlueBirdDX.Common.Media;
 using BlueBirdDX.Common.Storage;
-using BlueBirdDX.PublicApi;
+using BlueBirdDX.Api;
 using BlueBirdDX.WebApp.Services;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;

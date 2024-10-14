@@ -18,7 +18,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\BlueBirdDX.Common\BlueBirdDX.Common.csproj" />
-      <ProjectReference Include="..\BlueBirdDX.PublicApi\BlueBirdDX.PublicApi.csproj" />
+      <ProjectReference Include="..\BlueBirdDX.Api\BlueBirdDX.Api.csproj" />
     </ItemGroup>
 
     <ItemGroup>

@@ -1,4 +1,4 @@
-namespace BlueBirdDX.PublicApi;
+namespace BlueBirdDX.Api;
 
 public sealed class BlueBirdException : Exception
 {

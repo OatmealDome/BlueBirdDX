@@ -7,7 +7,7 @@
     </PropertyGroup>
     
     <PropertyGroup>
-        <PackageId>BlueBirdDX.PublicApi</PackageId>
+        <PackageId>BlueBirdDX.Api</PackageId>
         <Authors>OatmealDome</Authors>
         <Description>Interact with the BlueBirdDX API.</Description>
         <RepositoryUrl>https://github.com/OatmealDome/BlueBirdDX</RepositoryUrl>

@@ -1,6 +1,6 @@
 using BlueBirdDX.Common.Media;
 using BlueBirdDX.Common.Post;
-using BlueBirdDX.PublicApi;
+using BlueBirdDX.Api;
 using BlueBirdDX.WebApp.Api;
 using BlueBirdDX.WebApp.Services;
 using Microsoft.AspNetCore.Mvc;

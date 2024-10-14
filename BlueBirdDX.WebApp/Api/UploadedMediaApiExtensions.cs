@@ -1,5 +1,5 @@
 using BlueBirdDX.Common.Media;
-using BlueBirdDX.PublicApi;
+using BlueBirdDX.Api;
 
 namespace BlueBirdDX.WebApp.Api;
 

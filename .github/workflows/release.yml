@@ -87,11 +87,11 @@ jobs:
           NuGet_SourcePassword: ${{ secrets.GHCR_INSTALL_PAT }}
         
       - name: Build
-        run: dotnet build BlueBirdDX.PublicApi/BlueBirdDX.PublicApi.csproj --configuration Release --no-restore
+        run: dotnet build BlueBirdDX.Api/BlueBirdDX.Api.csproj --configuration Release --no-restore
       
       - name: Pack
         if: github.event_name == 'release'
-        run: dotnet pack BlueBirdDX.PublicApi/BlueBirdDX.PublicApi.csproj /p:Version=${{ github.event.release.tag_name }} --configuration Release --no-restore --verbosity normal --output .
+        run: dotnet pack BlueBirdDX.Api/BlueBirdDX.Api.csproj /p:Version=${{ github.event.release.tag_name }} --configuration Release --no-restore --verbosity normal --output .
       
       - name: Push to NuGet Source
         if: github.event_name == 'release'

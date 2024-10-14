@@ -1,5 +1,5 @@
 using BlueBirdDX.Common.Post;
-using BlueBirdDX.PublicApi;
+using BlueBirdDX.Api;
 using MongoDB.Bson;
 
 namespace BlueBirdDX.WebApp.Api;

@@ -2,7 +2,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 
-namespace BlueBirdDX.PublicApi;
+namespace BlueBirdDX.Api;
 
 public sealed class BlueBirdClient
 {
@@ -16,7 +16,7 @@ public sealed class BlueBirdClient
         Version version = typeof(BlueBirdClient).Assembly.GetName().Version!;
 
         SharedClient.DefaultRequestHeaders.Add("User-Agent",
-            $"BlueBirdDX.PublicApi/{version.Major}.{version.Minor}.{version.Revision}");
+            $"BlueBirdDX.Api/{version.Major}.{version.Minor}.{version.Revision}");
     }
 
     public BlueBirdClient(HttpClient httpClient, string baseUrl)

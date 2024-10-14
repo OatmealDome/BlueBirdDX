@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace BlueBirdDX.PublicApi;
+namespace BlueBirdDX.Api;
 
 public class PostThreadItemApi
 {

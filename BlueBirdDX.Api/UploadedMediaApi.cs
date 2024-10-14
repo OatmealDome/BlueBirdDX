@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace BlueBirdDX.PublicApi;
+namespace BlueBirdDX.Api;
 
 // Exposes a subset of UploadedMedia for API use.
 public class UploadedMediaApi

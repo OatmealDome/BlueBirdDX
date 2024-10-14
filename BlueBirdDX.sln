@@ -6,7 +6,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlueBirdDX.Common", "BlueBi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlueBirdDX.WebApp", "BlueBirdDX.WebApp\BlueBirdDX.WebApp.csproj", "{0B109661-BCE6-4061-B788-A3F34EF013BE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlueBirdDX.PublicApi", "BlueBirdDX.PublicApi\BlueBirdDX.PublicApi.csproj", "{4A632759-A03E-4C52-BF2E-740A70856EB2}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlueBirdDX.Api", "BlueBirdDX.Api\BlueBirdDX.Api.csproj", "{4A632759-A03E-4C52-BF2E-740A70856EB2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
