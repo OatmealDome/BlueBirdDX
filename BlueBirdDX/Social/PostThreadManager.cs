@@ -31,6 +31,9 @@ namespace BlueBirdDX.Social;
 
 public class PostThreadManager
 {
+    private const int ThreadsWaitForReadyTimeout = 60;
+    private const int ThreadsWaitForReadyRetryDelay = 5;
+    
     private static PostThreadManager? _instance;
     public static PostThreadManager Instance => _instance!;
 
@@ -60,7 +63,7 @@ public class PostThreadManager
             .Build();
 
         _threadsTimeoutResiliencePipeline = new ResiliencePipelineBuilder()
-            .AddTimeout(TimeSpan.FromSeconds(60))
+            .AddTimeout(TimeSpan.FromSeconds(ThreadsWaitForReadyTimeout))
             .Build();
 
         _textWrapperClient = new TextWrapperClient(BbConfig.Instance.TextWrapper.ServerUrl);
@@ -723,7 +726,7 @@ public class PostThreadManager
                             break;
                         }
 
-                        await Task.Delay(TimeSpan.FromSeconds(5), token);
+                        await Task.Delay(TimeSpan.FromSeconds(ThreadsWaitForReadyRetryDelay), token);
                     }
                 });
 
@@ -760,7 +763,7 @@ public class PostThreadManager
                         break;
                     }
 
-                    await Task.Delay(TimeSpan.FromSeconds(5), token);
+                    await Task.Delay(TimeSpan.FromSeconds(ThreadsWaitForReadyRetryDelay), token);
                 }
             });
 
@@ -789,7 +792,7 @@ public class PostThreadManager
                         break;
                     }
                     
-                    await Task.Delay(TimeSpan.FromSeconds(5), token);
+                    await Task.Delay(TimeSpan.FromSeconds(ThreadsWaitForReadyRetryDelay), token);
                 }
             });
         }
