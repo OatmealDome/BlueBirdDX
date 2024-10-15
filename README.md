@@ -13,6 +13,8 @@ BlueBirdDX is made up of two primary applications:
 
 MongoDB is used as the database system, and media files are stored on an Amazon S3 bucket. If a post contains a quoted tweet, Selenium WebDriver is used to generate a screenshot of the tweet which is then attached to posts made on non-Twitter social media services.
 
+TextWrapper is a small Node application that wraps the twitter-text library. Please check [its README file](BlueBirdDX.TextWrapper/README.md) for more information.
+
 BlueBirdDX expects to be run in a Docker environment, but it can be run outside of one for development purposes.
 
 Please note that the WebApp has no built-in authentication or authorization! **If you expose the WebApp directly to the Internet, anyone can make posts using your accounts!**
@@ -36,6 +38,12 @@ services:
   selenium-standalone-chrome:
     image: selenium/standalone-chrome
     restart: unless-stopped
+
+  textwrapper:
+    image: ghcr.io/oatmealdome/bluebirddxtextwrapper
+    restart: unless-stopped
+    environment:
+      PORT: 80
 
   core:
     image: ghcr.io/oatmealdome/bluebirddx
@@ -84,6 +92,9 @@ In a folder named `core-data`, create the following `config.json` file:
   "WebDriver": {
     "NodeUrl": "http://selenium-standalone-chrome:4444/wd/hub",
     "ScreenshotUrlFormat": "http://webapp:8080/quote/{0}?url={1}"
+  },
+  "TextWrapper": {
+    "ServerUrl": "http://textwrapper"
   }
 }
 ```
