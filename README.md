@@ -156,3 +156,43 @@ If you would like to exclude a certain social media site from a group, replace i
 You can now access the WebApp!
 
 On the home page, you can see all threads associated with the currently selected account. Change the account with the dropdown box. To create a thread, press the New Thread button. If you would like to upload media for use in a thread, click the Media Gallery link.
+
+## API
+
+A API library, `BlueBirdDX.Api`, is provided for those who want to automate usage of BlueBird.
+
+First, create a `BlueBirdClient` instance:
+
+```csharp
+BlueBirdClient client = new BlueBirdClient("http://webapp");
+```
+
+You can then use the client to upload media and enqueue threads:
+
+```csharp
+string mediaId = await client.UploadMedia("Media Name", data, "Media Alt Text");
+
+PostThreadApi thread = new PostThreadApi()
+{
+    Name = "Thread Name",
+    TargetGroup = "670e0925255f23c9bdfcfa15", // target group ID
+    PostToTwitter = true,
+    PostToBluesky = true,
+    PostToMastodon = true,
+    PostToThreads = true,
+    ScheduledTime = DateTime.UtcNow,
+    Items = new List<PostThreadItemApi>()
+    {
+        new PostThreadItemApi()
+        {
+            Text = "Hello, World!",
+            AttachedMedia = new List<string>()
+            {
+                mediaId
+            }
+        }
+    }
+};
+
+await client.EnqueuePostThread(thread);
+```
