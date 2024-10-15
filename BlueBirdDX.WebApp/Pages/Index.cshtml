@@ -1,4 +1,4 @@
-﻿@page
+@page
 @inject DatabaseService Database
 @using BlueBirdDX.WebApp.Services
 @using MongoDB.Driver
@@ -38,8 +38,9 @@
     }
 }
 
-<div class="text-end">
-    <a class="btn btn-primary mb-3" href="/thread/new" role="button">New Thread</a>
+<div class="text-end mb-3">
+    <a class="btn btn-primary" href="/thread/new" role="button">New Thread</a>
+    <a class="btn btn-success" href="#footer" role="button">⏬</a>
 </div>
 
 <select id="groupSelect" class="form-select mb-3">
