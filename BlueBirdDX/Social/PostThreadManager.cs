@@ -21,6 +21,7 @@ using OatmealDome.Airship.Bluesky.Feed;
 using OatmealDome.Airship.Bluesky.Feed.Facets;
 using OatmealDome.Unravel;
 using OatmealDome.Unravel.Authentication;
+using OatmealDome.Unravel.Publishing;
 using Polly;
 using Polly.Retry;
 using Serilog;
@@ -38,7 +39,8 @@ public class PostThreadManager
     
     private readonly IMongoCollection<PostThread> _postThreadCollection;
     
-    private readonly ResiliencePipeline _resiliencePipeline;
+    private readonly ResiliencePipeline _retryResiliencePipeline;
+    private readonly ResiliencePipeline _threadsTimeoutResiliencePipeline;
 
     private readonly TextWrapperClient _textWrapperClient;
 
@@ -53,8 +55,12 @@ public class PostThreadManager
             Delay = TimeSpan.FromSeconds(5)
         };
 
-        _resiliencePipeline = new ResiliencePipelineBuilder()
+        _retryResiliencePipeline = new ResiliencePipelineBuilder()
             .AddRetry(retryOptions)
+            .Build();
+
+        _threadsTimeoutResiliencePipeline = new ResiliencePipelineBuilder()
+            .AddTimeout(TimeSpan.FromSeconds(60))
             .Build();
 
         _textWrapperClient = new TextWrapperClient(BbConfig.Instance.TextWrapper.ServerUrl);
@@ -276,7 +282,7 @@ public class PostThreadManager
                 {
                     string altText = attachmentCache.GetMediaAltText(mediaId);
 
-                    await _resiliencePipeline.ExecuteAsync(async (_) =>
+                    await _retryResiliencePipeline.ExecuteAsync(async (_) =>
                     {
                         string uploadedMediaId =
                             await client.UploadImage(attachmentCache.GetMediaData(mediaId, SocialPlatform.Twitter),
@@ -289,7 +295,7 @@ public class PostThreadManager
                 twitterMediaIds = uploadedMediaIds.ToArray();
             }
 
-            await _resiliencePipeline.ExecuteAsync(async (token) =>
+            await _retryResiliencePipeline.ExecuteAsync(async (token) =>
             {
                 previousId = await client.Tweet(item.Text, quotedTweetId: quotedTweetId, replyToTweetId: previousId,
                     mediaIds: twitterMediaIds);
@@ -421,7 +427,7 @@ public class PostThreadManager
                 {
                     byte[] quotedPostData = attachmentCache.GetQuotedPostImageData(sanitizedUrl);
                 
-                    await _resiliencePipeline.ExecuteAsync(async (_) =>
+                    await _retryResiliencePipeline.ExecuteAsync(async (_) =>
                     {
                         GenericBlob blob = await client.Repo_CreateBlob(quotedPostData, "image/png");
                 
@@ -470,7 +476,7 @@ public class PostThreadManager
             
             foreach (ObjectId mediaId in item.AttachedMedia)
             {
-                await _resiliencePipeline.ExecuteAsync(async (_) =>
+                await _retryResiliencePipeline.ExecuteAsync(async (_) =>
                 {
                     GenericBlob blob = await client.Repo_CreateBlob(
                         attachmentCache.GetMediaData(mediaId, SocialPlatform.Bluesky),
@@ -523,7 +529,7 @@ public class PostThreadManager
                 post.Facets = facets;
             }
 
-            await _resiliencePipeline.ExecuteAsync(async (token) =>
+            await _retryResiliencePipeline.ExecuteAsync(async (token) =>
             {
                 previousPost = await client.Post_Create(post);
             });
@@ -570,7 +576,7 @@ public class PostThreadManager
                 
                 using MemoryStream quotedPostStream = new MemoryStream(quotedPostData);
 
-                await _resiliencePipeline.ExecuteAsync(async (_) =>
+                await _retryResiliencePipeline.ExecuteAsync(async (_) =>
                 {
                     attachments.Add(await client.UploadMedia(quotedPostStream,
                         description: "A screenshot of a Tweet on Twitter.")); 
@@ -609,7 +615,7 @@ public class PostThreadManager
                     description: attachmentCache.GetMediaAltText(mediaId)));
             }
 
-            await _resiliencePipeline.ExecuteAsync(async (token) =>
+            await _retryResiliencePipeline.ExecuteAsync(async (token) =>
             {
                 Status status = await client.PublishStatus(text, replyStatusId: previousId,
                     mediaIds: attachments.Count > 0 ? attachments.Select(a => a.Id) : null, visibility: Visibility.Public);
@@ -634,6 +640,25 @@ public class PostThreadManager
                 UserId = account.UserId
             }
         };
+
+        async Task<bool> CheckMediaContainerReady(string containerId)
+        {
+            MediaContainerState state = await client.Publishing_GetMediaContainerState(containerId);
+
+            if (state.Status == MediaContainerStatus.Error)
+            {
+                throw new Exception(
+                    $"Media container {containerId} processing returned an error: \"{state.ErrorMessage}\"");
+            }
+            
+            if (state.Status == MediaContainerStatus.Expired ||
+                state.Status == MediaContainerStatus.Published)
+            {
+                throw new Exception($"Media container {containerId} is in unexpected status \"{state.Status}\"");
+            }
+
+            return state.Status == MediaContainerStatus.Finished;
+        }
 
         string? previousId = parentThread?.Items.Last().ThreadsId;
 
@@ -681,13 +706,33 @@ public class PostThreadManager
 
                 foreach (string url in mediaUrls)
                 {
-                    await _resiliencePipeline.ExecuteAsync(async (_) =>
+                    await _retryResiliencePipeline.ExecuteAsync(async (_) =>
                     {
                         subIds.Add(await client.Publishing_CreateImageMediaContainer(url, isCarouselItem: true));
                     });
                 }
 
-                await _resiliencePipeline.ExecuteAsync(async (_) =>
+                await _threadsTimeoutResiliencePipeline.ExecuteAsync(async (token) =>
+                {
+                    Dictionary<string, bool> subStates = new Dictionary<string, bool>();
+
+                    while (!token.IsCancellationRequested)
+                    {
+                        foreach (string subId in subIds)
+                        {
+                            subStates[subId] = await CheckMediaContainerReady(subId);
+                        }
+
+                        if (subStates.All(p => p.Value))
+                        {
+                            break;
+                        }
+
+                        await Task.Delay(TimeSpan.FromSeconds(5), token);
+                    }
+                });
+
+                await _retryResiliencePipeline.ExecuteAsync(async (_) =>
                 {
                     containerId =
                         await client.Publishing_CreateCarouselMediaContainer(subIds, text, previousId,
@@ -696,7 +741,7 @@ public class PostThreadManager
             }
             else if (mediaUrls.Count == 1)
             {
-                await _resiliencePipeline.ExecuteAsync(async (_) =>
+                await _retryResiliencePipeline.ExecuteAsync(async (_) =>
                 {
                     containerId = await client.Publishing_CreateImageMediaContainer(mediaUrls[0], text, previousId,
                         quotedPostId: quotedPostId);
@@ -704,34 +749,54 @@ public class PostThreadManager
             }
             else
             {
-                await _resiliencePipeline.ExecuteAsync(async (_) =>
+                await _retryResiliencePipeline.ExecuteAsync(async (_) =>
                 {
                     containerId =
                         await client.Publishing_CreateTextMediaContainer(text, previousId, quotedPostId: quotedPostId);
                 });
             }
             
-            if (mediaUrls.Count > 0)
+            await _threadsTimeoutResiliencePipeline.ExecuteAsync(async (token) =>
             {
-                // Facebook says to "wait on average 30 seconds" before publishing a media container to give the server
-                // time to process the upload.
-                // TODO: After waiting, we should probably check the media container status before proceeding.
-                // https://developers.facebook.com/docs/threads/posts
-                await Task.Delay(30 * 1000);
-            }
+                while (!token.IsCancellationRequested)
+                {
+                    if (await CheckMediaContainerReady(containerId))
+                    {
+                        break;
+                    }
 
-            await _resiliencePipeline.ExecuteAsync(async (token) =>
+                    await Task.Delay(TimeSpan.FromSeconds(5), token);
+                }
+            });
+
+            await _retryResiliencePipeline.ExecuteAsync(async (token) =>
             {
                 previousId = await client.Publishing_PublishMediaContainer(containerId);
             });
 
             item.ThreadsId = previousId;
             
-            if (postThread.Items.Count > 0)
+            await _threadsTimeoutResiliencePipeline.ExecuteAsync(async (token) =>
             {
-                // Wait again to give some time for the media container to be published.
-                await Task.Delay(15 * 1000);
-            }
+                while (!token.IsCancellationRequested)
+                {
+                    MediaContainerState state = await client.Publishing_GetMediaContainerState(containerId);
+            
+                    if (state.Status == MediaContainerStatus.Error ||
+                        state.Status == MediaContainerStatus.Expired)
+                    {
+                        throw new Exception(
+                            $"Media container {containerId} is in unexpected status during publishing \"{state.Status}\"");
+                    }
+
+                    if (state.Status == MediaContainerStatus.Published)
+                    {
+                        break;
+                    }
+                    
+                    await Task.Delay(TimeSpan.FromSeconds(5), token);
+                }
+            });
         }
     }
 }
