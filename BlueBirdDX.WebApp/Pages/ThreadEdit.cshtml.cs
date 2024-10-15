@@ -37,27 +37,23 @@ public class ThreadEditModel : PageModel
         _database = databaseService;
     }
 
-    public IActionResult OnGet(string threadId)
+    public IActionResult OnGet(string threadId, [FromQuery] string? baseThreadId = null)
     {
         MediaNameCache = new Dictionary<string, string>();
-        
-        if (threadId == "new")
+
+        PostThreadApi? LoadThreadById(string id)
         {
-            ApiThread = new PostThreadApi();
-        }
-        else
-        {
-            if (!ObjectId.TryParse(threadId, out ObjectId objectId))
+            if (!ObjectId.TryParse(id, out ObjectId objectId))
             {
-                return NotFound();
+                return null;
             }
 
             PostThread? realThread =
                 _database.PostThreadCollection.AsQueryable().SingleOrDefault(p => p._id == objectId);
-
+ 
             if (realThread == null)
             {
-                return NotFound();
+                return null;
             }
             
             MediaNameCache = new Dictionary<string, string>();
@@ -71,7 +67,41 @@ public class ThreadEditModel : PageModel
                 MediaNameCache[media._id.ToString()] = media.Name;
             }
 
-            ApiThread = PostThreadApiExtensions.CreateApiFromCommon(realThread);
+            return PostThreadApiExtensions.CreateApiFromCommon(realThread);
+        }
+        
+        if (threadId == "new")
+        {
+            if (baseThreadId != null)
+            {
+                PostThreadApi? loadedThread = LoadThreadById(baseThreadId);
+
+                if (loadedThread == null)
+                {
+                    return NotFound();
+                }
+
+                loadedThread.Name += " (Copy)";
+                loadedThread.State = 0;
+                loadedThread.ScheduledTime = DateTime.UnixEpoch;
+
+                ApiThread = loadedThread;
+            }
+            else
+            {
+                ApiThread = new PostThreadApi();
+            }
+        }
+        else
+        {
+            PostThreadApi? loadedThread = LoadThreadById(threadId);
+
+            if (loadedThread == null)
+            {
+                return NotFound();
+            }
+
+            ApiThread = loadedThread;
         }
 
         ApiThreadId = threadId;
