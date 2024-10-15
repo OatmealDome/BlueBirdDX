@@ -1,4 +1,4 @@
-@page
+﻿@page
 @inject DatabaseService Database
 @using BlueBirdDX.WebApp.Services
 @using MongoDB.Driver
@@ -60,6 +60,11 @@
     <tbody>
     </tbody>
 </table>
+
+<div class="text-end mt-2">
+    <a class="btn btn-primary" href="/thread/new" role="button">New Thread</a>
+    <a class="btn btn-success" href="#header" role="button">⏫</a>
+</div>
 
 <!-- Error modal -->
 <div id="error-modal" class="modal" tabindex="-1">
