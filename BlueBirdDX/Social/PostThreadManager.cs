@@ -664,7 +664,7 @@ public class PostThreadManager
         {
             string text = item.Text;
             
-            List<string> mediaUrls = new List<string>();
+            List<(string mediaUrl, string altText)> attachments = new List<(string mediaUrl, string altText)>();
 
             string? quotedPostId = null;
             
@@ -680,8 +680,9 @@ public class PostThreadManager
                 }
                 else
                 {
-                    mediaUrls.Add(attachmentCache.GetQuotedPostImagePreSignedUrl(sanitizedUrl));
-                
+                    attachments.Add((attachmentCache.GetQuotedPostImagePreSignedUrl(sanitizedUrl),
+                        "A screenshot of a tweet on Twitter."));
+                    
                     if (text != "")
                     {
                         text += "\n\n";
@@ -693,20 +694,22 @@ public class PostThreadManager
 
             foreach (ObjectId attachmentId in item.AttachedMedia)
             {
-                mediaUrls.Add(attachmentCache.GetMediaPreSignedUrl(attachmentId));
+                attachments.Add((attachmentCache.GetMediaPreSignedUrl(attachmentId),
+                    attachmentCache.GetMediaAltText(attachmentId)));
             }
 
             string containerId = null!;
             
-            if (mediaUrls.Count > 1)
+            if (attachments.Count > 1)
             {
                 List<string> subIds = new List<string>();
 
-                foreach (string url in mediaUrls)
+                foreach ((string mediaUrl, string altText) in attachments)
                 {
                     await _retryResiliencePipeline.ExecuteAsync(async (_) =>
                     {
-                        subIds.Add(await client.Publishing_CreateImageMediaContainer(url, isCarouselItem: true));
+                        subIds.Add(await client.Publishing_CreateImageMediaContainer(mediaUrl, isCarouselItem: true,
+                            altText: altText));
                     });
                 }
 
@@ -745,12 +748,14 @@ public class PostThreadManager
                             quotedPostId: quotedPostId);
                 });
             }
-            else if (mediaUrls.Count == 1)
+            else if (attachments.Count == 1)
             {
+                (string mediaUrl, string altText) attachment = attachments[0];
+                
                 await _retryResiliencePipeline.ExecuteAsync(async (_) =>
                 {
-                    containerId = await client.Publishing_CreateImageMediaContainer(mediaUrls[0], text, previousId,
-                        quotedPostId: quotedPostId);
+                    containerId = await client.Publishing_CreateImageMediaContainer(attachment.mediaUrl, text,
+                        previousId, quotedPostId: quotedPostId, altText: attachment.altText);
                 });
             }
             else
