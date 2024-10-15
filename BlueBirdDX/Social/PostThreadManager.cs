@@ -583,25 +583,20 @@ public class PostThreadManager
                 });
                 
                 PostThreadItem? quotedItem = attachmentCache.GetQuotedPostBlueBirdItem(sanitizedUrl);
+                
+                if (text != "")
+                {
+                    text += "\n\n";
+                }
 
                 if (quotedItem != null && quotedItem.MastodonId != null)
                 {
                     Account mastodonAccount = await client.GetCurrentUser();
                     
-                    if (text != "")
-                    {
-                        text += "\n\n";
-                    }
-
                     text += "🐘\u00a0" + mastodonAccount.ProfileUrl + "/" + quotedItem.MastodonId;
                 }
                 else
                 {
-                    if (text != "")
-                    {
-                        text += "\n\n";
-                    }
-
                     text += "🐦\u00a0" + sanitizedUrl;
                 }
             }
