@@ -718,6 +718,14 @@ public class PostThreadManager
                     {
                         foreach (string subId in subIds)
                         {
+                            if (subStates.TryGetValue(subId, out bool ready))
+                            {
+                                if (ready)
+                                {
+                                    continue;
+                                }
+                            }
+                            
                             subStates[subId] = await CheckMediaContainerReady(subId);
                         }
 
