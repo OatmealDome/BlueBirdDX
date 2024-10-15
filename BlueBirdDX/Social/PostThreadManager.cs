@@ -596,7 +596,7 @@ public class PostThreadManager
                         text += "\n\n";
                     }
 
-                    text += "🐦\u00a0" + item.QuotedPostSanitized!;
+                    text += "🐦\u00a0" + sanitizedUrl;
                 }
             }
 
@@ -664,7 +664,7 @@ public class PostThreadManager
                         text += "\n\n";
                     }
 
-                    text += "🐦\u00a0" + item.QuotedPostSanitized;
+                    text += "🐦\u00a0" + sanitizedUrl;
                 }
             }
 
