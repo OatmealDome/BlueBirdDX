@@ -55,6 +55,7 @@
     <tr>
         <th scope="col">Thread Name</th>
         <th scope="col">State</th>
+        <th scope="col">Actions</th>
     </tr>
     </thead>
     <tbody>
@@ -88,7 +89,7 @@
     <script>
         function repopulateTable(response) {
             for (const thread of response) {
-                $("tbody").append("<tr><td><a href=\"/thread/" + thread.id + "/\">" + thread.name + "</a></td><td>" + thread.state + "</td></tr>");
+                $("tbody").append("<tr><td>" + thread.name + "</td><td>" + thread.state + "</td><td><a href=\"/thread/" + thread.id + "/\">edit</a>, <a href=\"/thread/new?baseThreadId=" + thread.id + "\">clone</a></td></tr>");
             }
         }
 
