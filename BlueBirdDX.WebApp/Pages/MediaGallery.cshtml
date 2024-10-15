@@ -8,7 +8,7 @@
 }
 
 <div class="text-end">
-    <button id="uploadOpenModalButton" class="btn btn-primary">Upload</button>
+    <button class="btn btn-primary uploadOpenModalButton">Upload</button>
     <a class="btn btn-success" href="#footer" role="button">⏬</a>
 </div>
 
@@ -31,6 +31,12 @@
     }
     </tbody>
 </table>
+
+<div class="text-end">
+    <button class="btn btn-primary uploadOpenModalButton">Upload</button>
+    <a class="btn btn-success" href="#header" role="button">⏫</a>
+</div>
+
 
 <!-- Upload modal -->
 <div id="upload-modal" class="modal" tabindex="-1">
@@ -141,7 +147,7 @@
                 });
             });
             
-            $("#uploadOpenModalButton").click(function () {
+            $(".uploadOpenModalButton").click(function () {
                 $("#upload-modal").modal("show");
             });
             
