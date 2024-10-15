@@ -200,7 +200,7 @@ public class AttachmentCache
         
         IWebElement? iframeElement = null;
     
-        WebDriverWait wait = new WebDriverWait(remoteWebDriver, TimeSpan.FromSeconds(10));
+        WebDriverWait wait = new WebDriverWait(remoteWebDriver, TimeSpan.FromSeconds(30));
         wait.Until((driver) =>
         {
             try
