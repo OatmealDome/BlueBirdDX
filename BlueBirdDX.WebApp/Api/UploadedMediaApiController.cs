@@ -146,34 +146,4 @@ public class UploadedMediaApiController : ControllerBase
 
         return Ok();
     }
-    
-    [HttpGet]
-    [Route("/api/v1/media/{mediaId}/url")]
-    [ProducesResponseType(typeof(UploadedMediaUrlResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public IActionResult GetMediaUrl(string mediaId)
-    {
-        UploadedMedia? media = FindMediaById(mediaId);
-
-        if (media == null)
-        {
-            return Problem("Invalid media ID", statusCode: 404);
-        }
-
-        string url;
-
-        try
-        {
-            url = _remoteStorage.GetPreSignedUrlForFile("media/" + mediaId, 15);
-        }
-        catch (Exception)
-        {
-            return Problem("Failed to generate pre-signed URL", statusCode: 500);
-        }
-        
-        return Ok(new UploadedMediaUrlResponse()
-        {
-            Url = url
-        });
-    }
 }
