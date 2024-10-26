@@ -26,7 +26,7 @@
         <tr>
             <td>@media.Name</td>
             <td>@media.CreationTime.ToString("O")</td>
-            <td><a href="#" data-media-id="@media._id.ToString()">preview</a>, <a href="/media/@media._id.ToString()">edit</a></td>
+            <td><a href="/media/@media._id.ToString()/preview" target="_blank">preview</a>, <a href="/media/@media._id.ToString()">edit</a></td>
         </tr>
     }
     </tbody>
@@ -130,23 +130,6 @@
         }
         
         $(function () {
-            $("[data-media-id]").each(function() {
-                $(this).click(function() {
-                    const mediaId = $(this).data("media-id");
-                    
-                    $.ajax({
-                        method: "GET",
-                        url: "/api/v1/media/" + mediaId + "/url",
-                    }).done(function (response) {
-                        window.open(response.url, "_blank");
-                    }).fail(function () {
-                        showErrorModal("Failed to generate pre-signed URL.");
-                    });
-                    
-                    return false;
-                });
-            });
-            
             $(".uploadOpenModalButton").click(function () {
                 $("#upload-modal").modal("show");
             });
