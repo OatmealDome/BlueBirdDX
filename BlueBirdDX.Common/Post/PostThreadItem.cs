@@ -1,6 +1,5 @@
 using BlueBirdDX.Common.Util;
 using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
 
 namespace BlueBirdDX.Common.Post;
 
@@ -22,31 +21,6 @@ public class PostThreadItem
     {
         get;
         set;
-    }
-
-    [BsonIgnore]
-    public string? QuotedPostSanitized
-    {
-        get
-        {
-            if (QuotedPost == null)
-            {
-                return null;
-            }
-            
-            // Remove the query parameters (usually just analytics stuff) and always use twitter.com as the domain.
-
-            string url = QuotedPost.Replace("x.com", "twitter.com");
-            
-            int queryParametersIdx = url.IndexOf('?');
-        
-            if (queryParametersIdx != -1)
-            {
-                url = url.Substring(0, queryParametersIdx);
-            }
-
-            return url;
-        }
     }
 
     public string? TwitterId

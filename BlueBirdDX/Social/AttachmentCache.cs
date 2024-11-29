@@ -11,6 +11,7 @@ using BlueBirdDX.Database;
 using BlueBirdDX.Util;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using OatmealDome.Airship.ATProtocol.Lexicon.Types;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium.Remote;
@@ -52,8 +53,7 @@ public class AttachmentCache
     
     private readonly Dictionary<string, byte[]> _quotedPostImageCache = new Dictionary<string, byte[]>();
 
-    private readonly Dictionary<string, PostThreadItem> _quotedPostBlueBirdItemCache =
-        new Dictionary<string, PostThreadItem>();
+    private readonly Dictionary<string, QuotedPost> _quotedPosts;
     
     public AttachmentCache()
     {
@@ -64,6 +64,8 @@ public class AttachmentCache
         
         _uploadedMediaCollection = DatabaseManager.Instance.GetCollection<UploadedMedia>("media");
         _postThreadCollection = DatabaseManager.Instance.GetCollection<PostThread>("threads");
+
+        _quotedPosts = new Dictionary<string, QuotedPost>();
     }
 
     public string GetMediaMimeType(ObjectId mediaId, SocialPlatform platform)
@@ -176,16 +178,50 @@ public class AttachmentCache
 
     public async Task AddQuotedPostToCache(string url)
     {
-        string tweetId = url.Split('/')[^1];
+        Uri uri = new Uri(url);
 
-        PostThreadItem? postThreadItem = _postThreadCollection.AsQueryable().SelectMany(t => t.Items)
-            .FirstOrDefault(i => i.TwitterId == tweetId);
+        string sanitizedUrl = url;
 
-        if (postThreadItem != null)
+        if (uri.Host == "x.com")
         {
-            _quotedPostBlueBirdItemCache[url] = postThreadItem;
+            sanitizedUrl = sanitizedUrl.Replace("x.com", "twitter.com");
         }
+        
+        int queryParametersIdx = sanitizedUrl.IndexOf('?');
+        
+        if (queryParametersIdx != -1)
+        {
+            sanitizedUrl = sanitizedUrl.Substring(0, queryParametersIdx);
+        }
+        
+        QuotedPost quotedPost = new QuotedPost()
+        {
+            SanitizedUrl = sanitizedUrl
+        };
+        
+        if (uri.Host == "x.com" || uri.Host == "twitter.com")
+        {
+            quotedPost.TwitterId = sanitizedUrl.Split('/')[^1];
             
+            PostThreadItem? postThreadItem = _postThreadCollection.AsQueryable().SelectMany(t => t.Items)
+                .FirstOrDefault(i => i.TwitterId == quotedPost.TwitterId);
+
+            if (postThreadItem != null)
+            {
+                quotedPost.BlueskyRef = postThreadItem.BlueskyThisRef != null
+                    ? new StrongRef(postThreadItem.BlueskyThisRef.Uri, postThreadItem.BlueskyThisRef.Cid)
+                    : null;
+                quotedPost.MastodonId = postThreadItem.MastodonId;
+                quotedPost.ThreadsId = postThreadItem.ThreadsId;
+            }
+        }
+        else
+        {
+            throw new NotImplementedException("Unsupported URL");
+        }
+
+        _quotedPosts[url] = quotedPost;
+        
         ChromeOptions options = new ChromeOptions();
         options.AddArgument("--ignore-certificate-errors");
         options.AddArgument("--hide-scrollbars");
@@ -196,7 +232,7 @@ public class AttachmentCache
         using RemoteWebDriver remoteWebDriver = new RemoteWebDriver(new Uri(config.NodeUrl), options);
 
         remoteWebDriver.Navigate()
-            .GoToUrl(string.Format(config.ScreenshotUrlFormat, "tweet", WebUtility.UrlEncode(url)));
+            .GoToUrl(string.Format(config.ScreenshotUrlFormat, "tweet", WebUtility.UrlEncode(sanitizedUrl)));
         
         IWebElement? iframeElement = null;
     
@@ -250,9 +286,9 @@ public class AttachmentCache
         _remoteStorage.TransferFile(ComputeRemoteFileNameForQuotedPost(url), data, "image/png");
     }
 
-    public PostThreadItem? GetQuotedPostBlueBirdItem(string url)
+    public QuotedPost GetQuotedPost(string url)
     {
-        return _quotedPostBlueBirdItemCache.GetValueOrDefault(url);
+        return _quotedPosts[url];
     }
 
     public byte[] GetQuotedPostImageData(string url)

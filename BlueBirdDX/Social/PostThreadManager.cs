@@ -141,7 +141,7 @@ public class PostThreadManager
         {
             if (item.QuotedPost != null)
             {
-                await attachmentCache.AddQuotedPostToCache(item.QuotedPostSanitized!);
+                await attachmentCache.AddQuotedPostToCache(item.QuotedPost);
             }
         }
 
@@ -270,9 +270,9 @@ public class PostThreadManager
             
             if (item.QuotedPost != null)
             {
-                string[] splitUrl = item.QuotedPostSanitized!.Split('/');
+                QuotedPost quotedPost = attachmentCache.GetQuotedPost(item.QuotedPost);
 
-                quotedTweetId = splitUrl[^1];
+                quotedTweetId = quotedPost.TwitterId;
             }
             
             string[]? twitterMediaIds = null;
@@ -418,17 +418,15 @@ public class PostThreadManager
 
             if (item.QuotedPost != null)
             {
-                string sanitizedUrl = item.QuotedPostSanitized!;
+                QuotedPost quotedPost = attachmentCache.GetQuotedPost(item.QuotedPost);
                 
-                PostThreadItem? quotedItem = attachmentCache.GetQuotedPostBlueBirdItem(sanitizedUrl);
-
-                if (quotedItem != null && quotedItem.BlueskyThisRef != null)
+                if (quotedPost.BlueskyRef != null)
                 {
-                    quotedRef = BbCommonRefToAirshipRef(quotedItem.BlueskyThisRef);
+                    quotedRef = quotedPost.BlueskyRef;
                 }
                 else
                 {
-                    byte[] quotedPostData = attachmentCache.GetQuotedPostImageData(sanitizedUrl);
+                    byte[] quotedPostData = attachmentCache.GetQuotedPostImageData(item.QuotedPost);
                 
                     await _retryResiliencePipeline.ExecuteAsync(async (_) =>
                     {
@@ -470,7 +468,7 @@ public class PostThreadManager
                         {
                             new LinkFeature()
                             {
-                                Uri = sanitizedUrl
+                                Uri = quotedPost.SanitizedUrl
                             }
                         }
                     });
@@ -573,9 +571,7 @@ public class PostThreadManager
             
             if (item.QuotedPost != null)
             {
-                string sanitizedUrl = item.QuotedPostSanitized!;
-                
-                byte[] quotedPostData = attachmentCache.GetQuotedPostImageData(sanitizedUrl);
+                byte[] quotedPostData = attachmentCache.GetQuotedPostImageData(item.QuotedPost);
                 
                 using MemoryStream quotedPostStream = new MemoryStream(quotedPostData);
 
@@ -585,22 +581,22 @@ public class PostThreadManager
                         description: "A screenshot of a Tweet on Twitter.")); 
                 });
                 
-                PostThreadItem? quotedItem = attachmentCache.GetQuotedPostBlueBirdItem(sanitizedUrl);
+                QuotedPost quotedPost = attachmentCache.GetQuotedPost(item.QuotedPost)!;
                 
                 if (text != "")
                 {
                     text += "\n\n";
                 }
 
-                if (quotedItem != null && quotedItem.MastodonId != null)
+                if (quotedPost.MastodonId != null)
                 {
                     Account mastodonAccount = await client.GetCurrentUser();
                     
-                    text += "🐘\u00a0" + mastodonAccount.ProfileUrl + "/" + quotedItem.MastodonId;
+                    text += "🐘\u00a0" + mastodonAccount.ProfileUrl + "/" + quotedPost.MastodonId;
                 }
                 else
                 {
-                    text += "🐦\u00a0" + sanitizedUrl;
+                    text += "🐦\u00a0" + quotedPost.SanitizedUrl;
                 }
             }
 
@@ -670,17 +666,15 @@ public class PostThreadManager
             
             if (item.QuotedPost != null)
             {
-                string sanitizedUrl = item.QuotedPostSanitized!;
-                
-                PostThreadItem? quotedItem = attachmentCache.GetQuotedPostBlueBirdItem(sanitizedUrl);
+                QuotedPost quotedPost = attachmentCache.GetQuotedPost(item.QuotedPost);
 
-                if (quotedItem != null && quotedItem.ThreadsId != null)
+                if (quotedPost.ThreadsId != null)
                 {
-                    quotedPostId = quotedItem.ThreadsId;
+                    quotedPostId = quotedPost.ThreadsId;
                 }
                 else
                 {
-                    attachments.Add((attachmentCache.GetQuotedPostImagePreSignedUrl(sanitizedUrl),
+                    attachments.Add((attachmentCache.GetQuotedPostImagePreSignedUrl(item.QuotedPost),
                         "A screenshot of a tweet on Twitter."));
                     
                     if (text != "")
@@ -688,7 +682,7 @@ public class PostThreadManager
                         text += "\n\n";
                     }
 
-                    text += "🐦\u00a0" + sanitizedUrl;
+                    text += "🐦\u00a0" + quotedPost.SanitizedUrl;
                 }
             }
 
