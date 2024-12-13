@@ -49,6 +49,11 @@ public class QuotedPost
             return SocialPlatform.Twitter;
         }
 
+        if (BlueskyRef != null)
+        {
+            return SocialPlatform.Bluesky;
+        }
+
         throw new UnreachableException("Not implemented for this platform");
     }
 
@@ -60,6 +65,16 @@ public class QuotedPost
         {
             // Twitter will accept anything where the username should be.
             return $"https://twitter.com/_/status/" + TwitterId;
+        }
+
+        if (primaryPlatform == SocialPlatform.Bluesky)
+        {
+            string[] splitUri = BlueskyRef!.Uri.Split('/');
+            
+            string did = splitUri[^3];
+            string key = splitUri[^1];
+            
+            return $"https://bsky.app/profile/{did}/post/{key}";
         }
         
         throw new UnreachableException("Not implemented for this platform");
