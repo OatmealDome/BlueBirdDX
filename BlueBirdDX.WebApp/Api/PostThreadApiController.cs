@@ -13,6 +13,8 @@ namespace BlueBirdDX.WebApp.Api;
 [Produces("application/json")]
 public class PostThreadApiController : ControllerBase
 {
+    private const string TwitterUrlPathRegex = "^/[A-Za-z0-9_]+/status/[0-9]+";
+    
     private readonly DatabaseService _database;
 
     public PostThreadApiController(DatabaseService database)
@@ -212,18 +214,14 @@ public class PostThreadApiController : ControllerBase
                     error = "Invalid quoted post URL";
                     return false;
                 }
-
-                if (uri.Host != "twitter.com" && uri.Host != "x.com")
+                
+                if (uri.Host != "twitter.com" && uri.Host != "x.com" && uri.Host != "bsky.app")
                 {
-                    error = "Quoted post URL is not a Twitter URL";
+                    error = "Quoted post URL is not a Twitter or Bluesky URL";
                     return false;
                 }
-
-                if (!uri.PathAndQuery.Contains("status"))
-                {
-                    error = "Quoted post URL is not a Tweet URL";
-                    return false;
-                }
+                
+                // TODO url format enforcement regex
             }
             
             int attachmentCount = item.AttachedMedia.Count + (item.QuotedPost != null ? 1 : 0);
