@@ -426,7 +426,7 @@ public class PostThreadManager
                 }
                 else
                 {
-                    byte[] quotedPostData = attachmentCache.GetQuotedPostImageData(item.QuotedPost);
+                    byte[] quotedPostData = quotedPost.ImageData;
                 
                     await _retryResiliencePipeline.ExecuteAsync(async (_) =>
                     {
@@ -571,7 +571,9 @@ public class PostThreadManager
             
             if (item.QuotedPost != null)
             {
-                byte[] quotedPostData = attachmentCache.GetQuotedPostImageData(item.QuotedPost);
+                QuotedPost quotedPost = attachmentCache.GetQuotedPost(item.QuotedPost);
+
+                byte[] quotedPostData = quotedPost.ImageData;
                 
                 using MemoryStream quotedPostStream = new MemoryStream(quotedPostData);
 
@@ -580,8 +582,6 @@ public class PostThreadManager
                     attachments.Add(await client.UploadMedia(quotedPostStream,
                         description: "A screenshot of a Tweet on Twitter.")); 
                 });
-                
-                QuotedPost quotedPost = attachmentCache.GetQuotedPost(item.QuotedPost)!;
                 
                 if (text != "")
                 {
@@ -674,8 +674,7 @@ public class PostThreadManager
                 }
                 else
                 {
-                    attachments.Add((attachmentCache.GetQuotedPostImagePreSignedUrl(item.QuotedPost),
-                        "A screenshot of a tweet on Twitter."));
+                    attachments.Add((quotedPost.ImageUrl, "A screenshot of a tweet on Twitter."));
                     
                     if (text != "")
                     {

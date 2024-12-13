@@ -51,8 +51,6 @@ public class AttachmentCache
             { SocialPlatform.Threads, new Dictionary<ObjectId, byte[]>() }
         };
     
-    private readonly Dictionary<string, byte[]> _quotedPostImageCache = new Dictionary<string, byte[]>();
-
     private readonly Dictionary<string, QuotedPost> _quotedPosts;
     
     public AttachmentCache()
@@ -279,25 +277,17 @@ public class AttachmentCache
 
         Screenshot screenshot = remoteWebDriver.GetScreenshot();
 
-        byte[] data = screenshot.AsByteArray;
+        quotedPost.ImageData = screenshot.AsByteArray;
 
-        _quotedPostImageCache[url] = data;
-        
-        _remoteStorage.TransferFile(ComputeRemoteFileNameForQuotedPost(url), data, "image/png");
+        string remoteImageFileName = ComputeRemoteFileNameForQuotedPost(url);
+
+        _remoteStorage.TransferFile(remoteImageFileName, quotedPost.ImageData, "image/png");
+
+        quotedPost.ImageUrl = _remoteStorage.GetPreSignedUrlForFile(remoteImageFileName, 15);
     }
 
     public QuotedPost GetQuotedPost(string url)
     {
         return _quotedPosts[url];
-    }
-
-    public byte[] GetQuotedPostImageData(string url)
-    {
-        return _quotedPostImageCache[url];
-    }
-
-    public string GetQuotedPostImagePreSignedUrl(string url)
-    {
-        return _remoteStorage.GetPreSignedUrlForFile(ComputeRemoteFileNameForQuotedPost(url), 15);
     }
 }

@@ -34,4 +34,16 @@ public class QuotedPost
         get;
         set;
     }
+
+    public byte[] ImageData
+    {
+        get;
+        set;
+    }
+
+    public string ImageUrl
+    {
+        get;
+        set;
+    }
 }
