@@ -1,0 +1,26 @@
+@page "/quote/bluesky"
+@model QuoteBlueskyPostModel
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Quoted Bluesky Post</title>
+    <style>
+        #inner {
+            margin-top: 15px;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="inner">
+        <blockquote class="bluesky-embed" data-bluesky-uri="@Model.Uri" data-bluesky-cid="@Model.Cid"></blockquote>
+    </div>
+    <script src="https://embed.bsky.app/static/embed.js" charset="utf-8"></script>
+</body>
+</html>
