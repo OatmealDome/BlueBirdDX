@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Globalization;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
@@ -12,6 +14,9 @@ using BlueBirdDX.Util;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using OatmealDome.Airship.ATProtocol.Lexicon.Types;
+using OatmealDome.Airship.ATProtocol.Repo;
+using OatmealDome.Airship.Bluesky;
+using OatmealDome.Airship.Bluesky.Feed;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium.Remote;
@@ -205,6 +210,30 @@ public class AttachmentCache
                 quotedPost.ThreadsId = postThreadItem.ThreadsId;
             }
         }
+        else if (uri.Host == "bsky.app")
+        {
+            // for example: https://bsky.app/profile/oatmealdome.bsky.social/post/3lcwbawa4n323
+
+            string[] splitPath = uri.PathAndQuery.Split('/');
+
+            string repo = splitPath[^3];
+            string key = splitPath[^1];
+
+            BlueskyClient client = new BlueskyClient();
+            ATReturnedRecord<Post> returnedRecord = await client.Post_Get(repo, key);
+
+            quotedPost.BlueskyRef = returnedRecord.Ref;
+
+            PostThreadItem? postThreadItem = _postThreadCollection.AsQueryable().SelectMany(t => t.Items)
+                .FirstOrDefault(i => i.BlueskyThisRef != null && i.BlueskyThisRef.Uri == quotedPost.BlueskyRef.Uri);
+
+            if (postThreadItem != null)
+            {
+                quotedPost.TwitterId = postThreadItem.TwitterId;
+                quotedPost.MastodonId = postThreadItem.MastodonId;
+                quotedPost.ThreadsId = postThreadItem.ThreadsId;
+            }
+        }
         else
         {
             throw new NotImplementedException("Unsupported URL");
@@ -238,6 +267,11 @@ public class AttachmentCache
         if (primaryPlatform == SocialPlatform.Twitter)
         {
             queryParameters["url"] = quotedPost.GetPostUrlOnPrimaryPlatform();
+        }
+        else if (primaryPlatform == SocialPlatform.Bluesky)
+        {
+            queryParameters["uri"] = quotedPost.BlueskyRef!.Uri;
+            queryParameters["cid"] = quotedPost.BlueskyRef.Cid;
         }
 
         FormUrlEncodedContent queryContent = new FormUrlEncodedContent(queryParameters);
@@ -275,19 +309,67 @@ public class AttachmentCache
                 return true;
             });
         }
+        else if (primaryPlatform == SocialPlatform.Bluesky)
+        {
+            wait.Until(driver =>
+            {
+                try
+                {
+                    iframeElement = driver.FindElement(By.TagName("iframe"));
+
+                    string styleAttribute = iframeElement.GetAttribute("style");
+
+                    if (!styleAttribute.Contains("height"))
+                    {
+                        return false;
+                    }
+                }
+                catch (Exception)
+                {
+                    return false;
+                }
+
+                return true;
+            });
+
+            // Not sure what else we can do here...
+            // There doesn't seem to be an easy way to check if the iframe is done loading.
+        }
         
-        int ParsePixelValue(string val)
+        double ParsePixelValue(string val)
         {
             // strip "px" and parse
-            return int.Parse(val.Substring(0, val.Length - 2));
+            return double.Parse(val.Substring(0, val.Length - 2), CultureInfo.InvariantCulture);
         }
 
-        int iframeWidth = ParsePixelValue(iframeElement!.GetCssValue("width"));
-        int iframeHeight = ParsePixelValue(iframeElement!.GetCssValue("height"));
-    
+        double iframeWidth = ParsePixelValue(iframeElement!.GetCssValue("width"));
+        double iframeHeight = ParsePixelValue(iframeElement!.GetCssValue("height"));
+
+        int ConvertDimensionToInt(object o)
+        {
+            int i;
+            
+            if (o is double d)
+            {
+                double roundedUp = Math.Ceiling(d);
+                i = (int)roundedUp;
+            }
+            else if (o is long l)
+            {
+                i = Convert.ToInt32(l);
+            }
+            else
+            {
+                throw new UnreachableException($"Unexpected dimension type {o.GetType()}");
+            }
+            
+            return i;
+        }
+        
         ICollection<object> collection = (ICollection<object>)remoteWebDriver.ExecuteScript("return [window.outerWidth - window.innerWidth + arguments[0], window.outerHeight - window.innerHeight + arguments[1]]", new object[] { iframeWidth + 30, iframeHeight + 30 });
         IList<object> size = collection.ToList();
-        remoteWebDriver.Manage().Window.Size = new System.Drawing.Size((int)(Int64)size[0], (int)(Int64)size[1]);
+        remoteWebDriver.Manage().Window.Size =
+            new System.Drawing.Size(ConvertDimensionToInt(size[0]), ConvertDimensionToInt(size[1]));
         
         // Wait an extra 5 seconds to let anything that isn't done loading finish.
         Thread.Sleep(5000);
