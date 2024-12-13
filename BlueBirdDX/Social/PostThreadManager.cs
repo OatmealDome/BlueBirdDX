@@ -33,6 +33,8 @@ public class PostThreadManager
 {
     private const int ThreadsWaitForReadyTimeout = 60;
     private const int ThreadsWaitForReadyRetryDelay = 5;
+
+    private const string DifferentPlatformQuoteImageAltText = "A screenshot of a post on a different platform.";
     
     private static PostThreadManager? _instance;
     public static PostThreadManager Instance => _instance!;
@@ -266,21 +268,41 @@ public class PostThreadManager
 
         foreach (PostThreadItem item in postThread.Items)
         {
+            string text = item.Text;
+            
+            List<string> uploadedMediaIds = new List<string>();
+            
             string? quotedTweetId = null;
             
             if (item.QuotedPost != null)
             {
                 QuotedPost quotedPost = attachmentCache.GetQuotedPost(item.QuotedPost);
 
-                quotedTweetId = quotedPost.TwitterId;
+                if (quotedPost.TwitterId != null)
+                {
+                    quotedTweetId = quotedPost.TwitterId;
+                }
+                else
+                {
+                    string quoteMediaId =
+                        await client.UploadImage(quotedPost.ImageData, DifferentPlatformQuoteImageAltText);
+                    
+                    uploadedMediaIds.Add(quoteMediaId);
+                    
+                    if (text != "")
+                    {
+                        text += "\n\n";
+                    }
+
+                    text += quotedPost.GetPrimaryPlatform().ToEmoji() + "\u00a0" +
+                            quotedPost.GetPostUrlOnPrimaryPlatform();
+                }
             }
             
             string[]? twitterMediaIds = null;
 
             if (item.AttachedMedia.Count > 0)
             {
-                List<string> uploadedMediaIds = new List<string>();
-
                 foreach (ObjectId mediaId in item.AttachedMedia)
                 {
                     string altText = attachmentCache.GetMediaAltText(mediaId);
@@ -294,13 +316,13 @@ public class PostThreadManager
                         uploadedMediaIds.Add(uploadedMediaId);
                     });
                 }
-
-                twitterMediaIds = uploadedMediaIds.ToArray();
             }
+            
+            twitterMediaIds = uploadedMediaIds.Count > 0 ? uploadedMediaIds.ToArray() : null;
 
             await _retryResiliencePipeline.ExecuteAsync(async (token) =>
             {
-                previousId = await client.Tweet(item.Text, quotedTweetId: quotedTweetId, replyToTweetId: previousId,
+                previousId = await client.Tweet(text, quotedTweetId: quotedTweetId, replyToTweetId: previousId,
                     mediaIds: twitterMediaIds);
             });
 
@@ -435,7 +457,7 @@ public class PostThreadManager
                         images.Add(new EmbeddedImage()
                         {
                             Image = blob,
-                            AltText = "A screenshot of a tweet on Twitter."
+                            AltText = DifferentPlatformQuoteImageAltText
                         });
                     });
                 
@@ -449,8 +471,9 @@ public class PostThreadManager
                     {
                         textWithSpacingIfNecessary = post.Text + "\n\n";
                     }
-                
-                    string textWithSpacingAndLink = textWithSpacingIfNecessary + "🐦\u00a0original post";
+
+                    string textWithSpacingAndLink = textWithSpacingIfNecessary +
+                                                    quotedPost.GetPrimaryPlatform().ToEmoji() + "\u00a0original post";
 
                     int linkStartIdx = Encoding.UTF8.GetByteCount(textWithSpacingIfNecessary);
                     int linkEndIdx = Encoding.UTF8.GetByteCount(textWithSpacingAndLink);
@@ -468,7 +491,7 @@ public class PostThreadManager
                         {
                             new LinkFeature()
                             {
-                                Uri = quotedPost.SanitizedUrl
+                                Uri = quotedPost.GetPostUrlOnPrimaryPlatform()
                             }
                         }
                     });
@@ -580,7 +603,7 @@ public class PostThreadManager
                 await _retryResiliencePipeline.ExecuteAsync(async (_) =>
                 {
                     attachments.Add(await client.UploadMedia(quotedPostStream,
-                        description: "A screenshot of a Tweet on Twitter.")); 
+                        description: DifferentPlatformQuoteImageAltText));
                 });
                 
                 if (text != "")
@@ -596,7 +619,8 @@ public class PostThreadManager
                 }
                 else
                 {
-                    text += "🐦\u00a0" + quotedPost.SanitizedUrl;
+                    text += quotedPost.GetPrimaryPlatform().ToEmoji() + "\u00a0" +
+                            quotedPost.GetPostUrlOnPrimaryPlatform();
                 }
             }
 
@@ -674,14 +698,15 @@ public class PostThreadManager
                 }
                 else
                 {
-                    attachments.Add((quotedPost.ImageUrl, "A screenshot of a tweet on Twitter."));
+                    attachments.Add((quotedPost.ImageUrl, DifferentPlatformQuoteImageAltText));
                     
                     if (text != "")
                     {
                         text += "\n\n";
                     }
 
-                    text += "🐦\u00a0" + quotedPost.SanitizedUrl;
+                    text += quotedPost.GetPrimaryPlatform().ToEmoji() + "\u00a0" +
+                            quotedPost.GetPostUrlOnPrimaryPlatform();
                 }
             }
 

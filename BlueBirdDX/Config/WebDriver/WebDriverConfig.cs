@@ -8,9 +8,9 @@ public class WebDriverConfig
         set;
     } = "http://selenium-standalone-chrome:4444/wd/hub";
 
-    public string ScreenshotUrlFormat
+    public string WebAppUrl
     {
         get;
         set;
-    } = "http://bluebirddxwebapp/quote/{0}?url={1}";
+    } = "http://bluebirddxwebapp";
 }

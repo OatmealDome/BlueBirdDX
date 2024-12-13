@@ -178,28 +178,20 @@ public class AttachmentCache
     {
         Uri uri = new Uri(url);
 
-        string sanitizedUrl = url;
-
-        if (uri.Host == "x.com")
-        {
-            sanitizedUrl = sanitizedUrl.Replace("x.com", "twitter.com");
-        }
+        QuotedPost quotedPost = new QuotedPost();
         
-        int queryParametersIdx = sanitizedUrl.IndexOf('?');
-        
-        if (queryParametersIdx != -1)
-        {
-            sanitizedUrl = sanitizedUrl.Substring(0, queryParametersIdx);
-        }
-        
-        QuotedPost quotedPost = new QuotedPost()
-        {
-            SanitizedUrl = sanitizedUrl
-        };
+        _quotedPosts[url] = quotedPost;
         
         if (uri.Host == "x.com" || uri.Host == "twitter.com")
         {
-            quotedPost.TwitterId = sanitizedUrl.Split('/')[^1];
+            int queryParametersIdx = url.IndexOf('?');
+        
+            if (queryParametersIdx != -1)
+            {
+                url = url.Substring(0, queryParametersIdx);
+            }
+            
+            quotedPost.TwitterId = url.Split('/')[^1];
             
             PostThreadItem? postThreadItem = _postThreadCollection.AsQueryable().SelectMany(t => t.Items)
                 .FirstOrDefault(i => i.TwitterId == quotedPost.TwitterId);
@@ -217,8 +209,8 @@ public class AttachmentCache
         {
             throw new NotImplementedException("Unsupported URL");
         }
-
-        _quotedPosts[url] = quotedPost;
+        
+        SocialPlatform primaryPlatform = quotedPost.GetPrimaryPlatform();
         
         ChromeOptions options = new ChromeOptions();
         options.AddArgument("--ignore-certificate-errors");
@@ -229,36 +221,61 @@ public class AttachmentCache
 
         using RemoteWebDriver remoteWebDriver = new RemoteWebDriver(new Uri(config.NodeUrl), options);
 
-        remoteWebDriver.Navigate()
-            .GoToUrl(string.Format(config.ScreenshotUrlFormat, "tweet", WebUtility.UrlEncode(sanitizedUrl)));
+        StringBuilder urlBuilder = new StringBuilder();
+        urlBuilder.Append(BbConfig.Instance.WebDriver.WebAppUrl);
+
+        if (urlBuilder[^1] != '/')
+        {
+            urlBuilder.Append('/');
+        }
+
+        urlBuilder.Append("quote/");
+        urlBuilder.Append(primaryPlatform.ToString().ToLower());
+        urlBuilder.Append('?');
+
+        Dictionary<string, string> queryParameters = new Dictionary<string, string>();
+
+        if (primaryPlatform == SocialPlatform.Twitter)
+        {
+            queryParameters["url"] = quotedPost.GetPostUrlOnPrimaryPlatform();
+        }
+
+        FormUrlEncodedContent queryContent = new FormUrlEncodedContent(queryParameters);
+        urlBuilder.Append(await queryContent.ReadAsStringAsync());
+        
+        remoteWebDriver.Navigate().GoToUrl(urlBuilder.ToString());
         
         IWebElement? iframeElement = null;
     
         WebDriverWait wait = new WebDriverWait(remoteWebDriver, TimeSpan.FromSeconds(30));
-        wait.Until((driver) =>
+
+        if (primaryPlatform == SocialPlatform.Twitter)
         {
-            try
+            wait.Until(driver =>
             {
-                // This element appears when the embed has fully loaded.
-                driver.FindElement(By.Id("rufous-sandbox"));
+                try
+                {
+                    // This element appears when the embed has fully loaded.
+                    driver.FindElement(By.Id("rufous-sandbox"));
 
-                iframeElement = driver.FindElement(By.Id("twitter-widget-0"));
-            }
-            catch (Exception)
-            {
-                return false;
-            }
+                    iframeElement = driver.FindElement(By.Id("twitter-widget-0"));
+                }
+                catch (Exception)
+                {
+                    return false;
+                }
 
-            string visibility = iframeElement.GetCssValue("visibility");
+                string visibility = iframeElement.GetCssValue("visibility");
             
-            if (visibility != "visible")
-            {
-                return false;
-            }
+                if (visibility != "visible")
+                {
+                    return false;
+                }
 
-            return true;
-        });
-
+                return true;
+            });
+        }
+        
         int ParsePixelValue(string val)
         {
             // strip "px" and parse
