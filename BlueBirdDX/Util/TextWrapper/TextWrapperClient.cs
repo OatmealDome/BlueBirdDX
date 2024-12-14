@@ -40,6 +40,16 @@ public class TextWrapperClient
             set;
         }
     }
+
+    class CharacterCountResponse
+    {
+        [JsonPropertyName("length")]
+        public int Length
+        {
+            get;
+            set;
+        }
+    }
     
     private static readonly HttpClient SharedClient = new HttpClient();
     
@@ -117,6 +127,15 @@ public class TextWrapperClient
         }
 
         return responseMessage;
+    }
+
+    public async Task<int> CountCharacters(string text)
+    {
+        HttpResponseMessage responseMessage = await SendRequestInternal("/api/count-characters", text);
+
+        CharacterCountResponse countResponse = (await responseMessage.Content.ReadFromJsonAsync<CharacterCountResponse>())!;
+
+        return countResponse.Length;
     }
 
     public async Task<List<ExtractedChunk>> ExtractUrls(string text)
