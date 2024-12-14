@@ -135,7 +135,7 @@ public class PostThreadManager
     {
         LogContext.Information("Processing thread {id}", postThread._id.ToString());
 
-        LogContext.Information("Creating quoted post screenshots for {id}", postThread._id.ToString());
+        LogContext.Information("Fetching quoted posts for {id}", postThread._id.ToString());
         
         AttachmentCache attachmentCache = new AttachmentCache();
         
