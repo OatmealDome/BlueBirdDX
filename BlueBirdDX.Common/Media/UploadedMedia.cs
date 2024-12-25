@@ -4,7 +4,7 @@ namespace BlueBirdDX.Common.Media;
 
 public class UploadedMedia
 {
-    public const int LatestSchemaVersion = 1;
+    public const int LatestSchemaVersion = 2;
 
     public ObjectId _id
     {
@@ -31,6 +31,18 @@ public class UploadedMedia
     }
 
     public string MimeType
+    {
+        get;
+        set;
+    }
+
+    public int Width
+    {
+        get;
+        set;
+    }
+
+    public int Height
     {
         get;
         set;

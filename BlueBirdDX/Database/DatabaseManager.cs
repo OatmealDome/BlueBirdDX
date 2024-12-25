@@ -3,6 +3,7 @@ using BlueBirdDX.Config.Database;
 using BlueBirdDX.Database.Migration;
 using BlueBirdDX.Database.Migration.AccountGroup;
 using BlueBirdDX.Database.Migration.PostThread;
+using BlueBirdDX.Database.Migration.UploadedMedia;
 using MongoDB.Driver;
 
 namespace BlueBirdDX.Database;
@@ -16,6 +17,7 @@ public class DatabaseManager
     {
         new AccountGroupMigrationManager(),
         new PostThreadMigrationManager(),
+        new UploadedMediaMigrationManager()
     };
 
     private readonly MongoClient _client;
