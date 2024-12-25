@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
+using Amazon.S3;
 using BlueBirdDX.Common.Media;
 using BlueBirdDX.Common.Post;
 using BlueBirdDX.Common.Storage;
@@ -98,7 +99,7 @@ public class AttachmentCache
 
     public string GetMediaPreSignedUrl(ObjectId mediaId)
     {
-        return _remoteStorage.GetPreSignedUrlForFile("media/" + mediaId.ToString(), 15);
+        return _remoteStorage.GetPreSignedUrlForFile("media/" + mediaId.ToString(), HttpVerb.GET, 15);
     }
     
     public async Task AddMediaToCache(ObjectId mediaId)
@@ -382,7 +383,7 @@ public class AttachmentCache
 
         _remoteStorage.TransferFile(remoteImageFileName, quotedPost.ImageData, "image/png");
 
-        quotedPost.ImageUrl = _remoteStorage.GetPreSignedUrlForFile(remoteImageFileName, 15);
+        quotedPost.ImageUrl = _remoteStorage.GetPreSignedUrlForFile(remoteImageFileName, HttpVerb.GET, 15);
 
         return quotedPost;
     }

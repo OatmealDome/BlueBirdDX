@@ -50,13 +50,14 @@ public class RemoteStorage
         _transferUtility.Upload(request);
     }
 
-    public string GetPreSignedUrlForFile(string name, int validityMinutes = 60)
+    public string GetPreSignedUrlForFile(string name, HttpVerb verb, int validityMinutes = 60)
     {
         GetPreSignedUrlRequest request = new GetPreSignedUrlRequest()
         {
             BucketName = _bucketName,
             Key = name,
             Expires = DateTime.UtcNow.AddMinutes(validityMinutes),
+            Verb = verb
         };
 
         return _client.GetPreSignedURL(request);

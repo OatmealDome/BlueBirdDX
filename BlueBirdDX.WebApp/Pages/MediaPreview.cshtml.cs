@@ -1,3 +1,4 @@
+using Amazon.S3;
 using BlueBirdDX.Common.Media;
 using BlueBirdDX.Common.Storage;
 using BlueBirdDX.WebApp.Services;
@@ -34,7 +35,7 @@ public class MediaPreviewModel : PageModel
             return NotFound();
         }
         
-        string url = Storage.GetPreSignedUrlForFile("media/" + mediaId, 15);
+        string url = Storage.GetPreSignedUrlForFile("media/" + mediaId, HttpVerb.GET, 15);
 
         return Redirect(url);
     }
