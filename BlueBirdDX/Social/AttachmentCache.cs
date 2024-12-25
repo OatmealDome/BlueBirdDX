@@ -179,7 +179,7 @@ public class AttachmentCache
         return "quoted_posts/" + Convert.ToHexString(hash).ToLower();
     }
 
-    public async Task AddQuotedPostToCache(string url)
+    public async Task<QuotedPost> AddQuotedPostToCache(string url)
     {
         Uri uri = new Uri(url);
 
@@ -383,6 +383,8 @@ public class AttachmentCache
         _remoteStorage.TransferFile(remoteImageFileName, quotedPost.ImageData, "image/png");
 
         quotedPost.ImageUrl = _remoteStorage.GetPreSignedUrlForFile(remoteImageFileName, 15);
+
+        return quotedPost;
     }
 
     public QuotedPost GetQuotedPost(string url)

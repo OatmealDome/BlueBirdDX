@@ -143,7 +143,18 @@ public class PostThreadManager
         {
             if (item.QuotedPost != null)
             {
-                await attachmentCache.AddQuotedPostToCache(item.QuotedPost);
+                QuotedPost quotedPost = await attachmentCache.AddQuotedPostToCache(item.QuotedPost);
+
+                if (postThread.PostToTwitter && quotedPost.GetPrimaryPlatform() != SocialPlatform.Twitter)
+                {
+                    int length = await _textWrapperClient.CountCharacters(item.Text);
+
+                    // We need 28 characters for the link to the external platform.
+                    if (length > 252)
+                    {
+                        throw new Exception("Cannot exceed 252 characters when quoting a post from another platform");
+                    }
+                }
             }
         }
 
