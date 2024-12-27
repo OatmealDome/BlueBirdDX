@@ -516,11 +516,18 @@ public class PostThreadManager
                     GenericBlob blob = await client.Repo_CreateBlob(
                         attachmentCache.GetMediaData(mediaId, SocialPlatform.Bluesky),
                         attachmentCache.GetMediaMimeType(mediaId, SocialPlatform.Bluesky));
+
+                    (int width, int height) aspectRatio = attachmentCache.GetMediaAspectRatio(mediaId);
                 
                     images.Add(new EmbeddedImage()
                     {
                         Image = blob,
-                        AltText = attachmentCache.GetMediaAltText(mediaId)
+                        AltText = attachmentCache.GetMediaAltText(mediaId),
+                        AspectRatio = new MediaAspectRatio()
+                        {
+                            Width = aspectRatio.width,
+                            Height = aspectRatio.height
+                        }
                     }); 
                 });
             }
