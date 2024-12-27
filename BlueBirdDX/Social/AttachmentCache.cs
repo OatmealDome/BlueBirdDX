@@ -86,6 +86,13 @@ public class AttachmentCache
     {
         return _mediaDocumentCache[mediaId].AltText;
     }
+
+    public (int, int) GetMediaAspectRatio(ObjectId mediaId)
+    {
+        UploadedMedia media = _mediaDocumentCache[mediaId];
+
+        return (media.Width, media.Height);
+    }
     
     public byte[] GetMediaData(ObjectId mediaId, SocialPlatform platform)
     {
