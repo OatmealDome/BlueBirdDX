@@ -185,18 +185,8 @@ BlueBirdClient client = new BlueBirdClient("http://webapp");
 You can then use the client to upload media and enqueue threads:
 
 ```csharp
-// Create a new media upload job.
-CreateMediaUploadJobResponse createResponse = await client.CreateMediaUploadJob("Media Name", "image/jpeg", "Alt text");
-
-// Upload the image to the S3 bucket.
-HttpClient httpClient = new HttpClient();
-await httpClient.PutAsync(createResponse.TargetUrl, new ByteArrayContent(data));
-
-// Set the job as ready for processing.
-await client.SetMediaUploadJobAsReady(createResponse.Id);
-
-// Wait for the media to be processed.
-CheckMediaUploadJobStateResponse checkResponse = await client.WaitForMediaUploadJobToFinish(createResponse.Id);
+// Upload some media.
+CheckMediaUploadJobStateResponse checkResponse = await client.UploadMedia("Media Name", "image/jpeg", data, "Alt text"));
 
 if (checkResponse.IsFailure())
 {
@@ -228,4 +218,21 @@ PostThreadApi thread = new PostThreadApi()
 
 // Post the thread.
 await client.EnqueuePostThread(thread);
+```
+
+If you would like to have more control over the media upload process, you can use the media upload job APIs:
+
+```csharp
+// Create a new media upload job.
+CreateMediaUploadJobResponse createResponse = await client.CreateMediaUploadJob("Media Name", "image/jpeg", "Alt text");
+
+// Upload the image to the S3 bucket.
+HttpClient httpClient = new HttpClient();
+await httpClient.PutAsync(createResponse.TargetUrl, new ByteArrayContent(data));
+
+// Set the job as ready for processing.
+await client.SetMediaUploadJobAsReady(createResponse.Id);
+
+// Wait for the media to be processed.
+CheckMediaUploadJobStateResponse checkResponse = await client.WaitForMediaUploadJobToFinish(createResponse.Id);
 ```
