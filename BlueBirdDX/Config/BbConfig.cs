@@ -5,6 +5,7 @@ using BlueBirdDX.Config.Logging;
 using BlueBirdDX.Config.Notification;
 using BlueBirdDX.Config.Storage;
 using BlueBirdDX.Config.TextWrapper;
+using BlueBirdDX.Config.Video;
 using BlueBirdDX.Config.WebDriver;
 
 namespace BlueBirdDX.Config;
@@ -53,6 +54,13 @@ public class BbConfig
 
     [JsonPropertyName("Notification")]
     public NotificationConfig Notification
+    {
+        get;
+        set;
+    }
+
+    [JsonPropertyName("Video")]
+    public VideoConfig Video
     {
         get;
         set;
