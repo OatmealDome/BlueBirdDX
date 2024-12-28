@@ -15,6 +15,10 @@ services.Configure<RemoteStorageSettings>(builder.Configuration.GetSection(nameo
 services.AddSingleton<RemoteStorageSettings>(sp => sp.GetRequiredService<IOptions<RemoteStorageSettings>>().Value);
 services.AddSingleton<RemoteStorageService>();
 
+services.Configure<NotificationSettings>(builder.Configuration.GetSection(nameof(NotificationSettings)));
+services.AddSingleton<NotificationSettings>(sp => sp.GetRequiredService<IOptions<NotificationSettings>>().Value);
+services.AddSingleton<NotificationService>();
+
 services.AddRazorPages();
 
 var app = builder.Build();
