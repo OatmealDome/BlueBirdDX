@@ -1,3 +1,4 @@
+using Amazon.S3;
 using BlueBirdDX.Common.Media;
 using BlueBirdDX.Common.Storage;
 using BlueBirdDX.Api;
@@ -5,6 +6,7 @@ using BlueBirdDX.WebApp.Services;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using NATS.Net;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats;
 
@@ -16,11 +18,14 @@ public class UploadedMediaApiController : ControllerBase
 {
     private readonly DatabaseService _database;
     private readonly RemoteStorage _remoteStorage;
+    private readonly NatsClient _natsClient;
 
-    public UploadedMediaApiController(DatabaseService database, RemoteStorageService remoteStorage)
+    public UploadedMediaApiController(DatabaseService database, RemoteStorageService remoteStorage,
+        NotificationService notification)
     {
         _database = database;
         _remoteStorage = remoteStorage.SharedInstance;
+        _natsClient = notification.Client;
     }
     
     [HttpGet]
@@ -32,11 +37,45 @@ public class UploadedMediaApiController : ControllerBase
         
         return Ok(media.Select(m => UploadedMediaApiExtensions.CreateApiFromCommon(m)));
     }
+
+    private MediaUploadJob CreateMediaUploadJob(string name, string mimeType, string altText)
+    {
+        MediaUploadJob uploadJob = new MediaUploadJob()
+        {
+            SchemaVersion = UploadedMedia.LatestSchemaVersion,
+            Name = name,
+            MimeType = mimeType,
+            AltText = altText,
+            CreationTime = DateTime.UtcNow,
+            State = MediaUploadJobState.Uploading,
+            MediaId = null
+        };
+
+        _database.MediaUploadJobCollection.InsertOne(uploadJob);
+
+        return uploadJob;
+    }
     
+    private MediaUploadJob? FindMediaUploadJobById(ObjectId jobId)
+    {
+        return _database.MediaUploadJobCollection.AsQueryable().FirstOrDefault(m => m._id == jobId);
+    }
+    
+    private MediaUploadJob? FindMediaUploadJobById(string jobId)
+    {
+        if (!ObjectId.TryParse(jobId, out ObjectId jobIdObj))
+        {
+            return null;
+        }
+
+        return FindMediaUploadJobById(jobIdObj);
+    }
+    
+    // Kept for backwards compatibility.
     [HttpPost]
     [Route("/api/v1/media")]
     [ProducesResponseType(typeof(UploadedMediaApi), StatusCodes.Status200OK)]
-    public IActionResult PostMedia([FromForm] string name, IFormFile file, [FromForm] string? altText = null)
+    public async Task<IActionResult> PostMediaVersionOne([FromForm] string name, IFormFile file, [FromForm] string? altText = null)
     {
         if (name == "")
         {
@@ -48,8 +87,6 @@ public class UploadedMediaApiController : ControllerBase
         file.CopyTo(memoryStream);
         memoryStream.Seek(0, SeekOrigin.Begin);
         
-        // TODO expand format detection to video
-        
         IImageFormat format;
 
         try
@@ -58,32 +95,111 @@ public class UploadedMediaApiController : ControllerBase
         }
         catch (Exception)
         {
-            return Problem("Unsupported file type", statusCode: 415);
+            return Problem("Unsupported file type. If you are uploading video, use the new upload job endpoints.",
+                statusCode: 415);
         }
-        
-        UploadedMedia media = new UploadedMedia()
-        {
-            SchemaVersion = UploadedMedia.LatestSchemaVersion,
-            Name = name,
-            AltText = altText ?? "",
-            MimeType = format.DefaultMimeType,
-            CreationTime = DateTime.UtcNow
-        };
-        
-        _database.UploadedMediaCollection.InsertOne(media);
 
-        try
-        {
-            _remoteStorage.TransferFile("media/" + media._id.ToString(), memoryStream, format.DefaultMimeType);
-        }
-        catch (Exception)
-        {
-            _database.UploadedMediaCollection.DeleteOne(Builders<UploadedMedia>.Filter.Eq(m => m._id, media._id));
+        MediaUploadJob uploadJob = CreateMediaUploadJob(name, format.DefaultMimeType, altText ?? "");
 
-            return Problem("An error occurred while transferring the media data to remote storage", statusCode: 500);
-        }
+        _remoteStorage.TransferFile("unprocessed_media/" + uploadJob._id.ToString(), memoryStream.ToArray());
         
+        uploadJob.State = MediaUploadJobState.Ready;
+
+        _database.MediaUploadJobCollection.ReplaceOne(Builders<MediaUploadJob>.Filter.Eq(j => j._id, uploadJob._id),
+            uploadJob);
+        
+        await _natsClient.PublishAsync("media.jobs.ready", uploadJob._id.ToString());
+        
+        // Waiting isn't great, but I'm not sure how else to implement this.
+        while (uploadJob.State != MediaUploadJobState.Success && uploadJob.State != MediaUploadJobState.Failed)
+        {
+            Thread.Sleep(1000);
+
+            uploadJob = FindMediaUploadJobById(uploadJob._id)!;
+        }
+
+        if (uploadJob.State == MediaUploadJobState.Failed)
+        {
+            return Problem($"Failed to process job due to error \"{uploadJob.State}\"", statusCode: 500);
+        }
+
+        UploadedMedia media = _database.UploadedMediaCollection.AsQueryable()
+            .FirstOrDefault(m => m._id == uploadJob.MediaId)!;
+
         return Ok(UploadedMediaApiExtensions.CreateApiFromCommon(media));
+    }
+
+    [HttpPost]
+    [Route("/api/v2/media/job")]
+    [ProducesResponseType(typeof(CreateMediaUploadJobResponse), StatusCodes.Status200OK)]
+    public IActionResult PostMediaUploadJob([FromForm] string name, [FromForm] string mimeType,
+        [FromForm] string? altText = null)
+    {
+        MediaUploadJob uploadJob = CreateMediaUploadJob(name, mimeType, altText ?? "");
+
+        string url =
+            _remoteStorage.GetPreSignedUrlForFile("unprocessed_media/" + uploadJob._id.ToString(), HttpVerb.PUT, 60);
+
+        return Ok(new CreateMediaUploadJobResponse()
+        {
+            Id = uploadJob._id.ToString(),
+            TargetUrl = url
+        });
+    }
+    
+    [HttpPut]
+    [Route("/api/v2/media/job/{jobId}/state")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> PutMediaUploadJobState(string jobId, [FromBody] ChangeMediaUploadJobStateRequest request)
+    {
+        MediaUploadJob? job = FindMediaUploadJobById(jobId);
+
+        if (job == null)
+        {
+            return Problem("Invalid media upload job ID", statusCode: 404);
+        }
+
+        if (job.State != MediaUploadJobState.Uploading)
+        {
+            return BadRequest("Upload job is not in Uploading state");
+        }
+
+        if (request.State != (int)MediaUploadJobState.Uploading && request.State != (int)MediaUploadJobState.Ready)
+        {
+            return BadRequest("Can only set state to Uploading or Ready");
+        }
+
+        job.State = (MediaUploadJobState)request.State;
+
+        await _database.MediaUploadJobCollection.ReplaceOneAsync(
+            Builders<MediaUploadJob>.Filter.Eq(j => j._id, job._id), job);
+
+        await _natsClient.PublishAsync("media.jobs.ready", job._id.ToString());
+        
+        return Ok();
+    }
+
+    [HttpGet]
+    [Route("/api/v2/media/job/{jobId}/state")]
+    [ProducesResponseType(typeof(CheckMediaUploadJobStateResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public IActionResult GetMediaUploadJob(string jobId)
+    {
+        MediaUploadJob? job = FindMediaUploadJobById(jobId);
+
+        if (job == null)
+        {
+            return Problem("Invalid media upload job ID", statusCode: 404);
+        }
+
+        return Ok(new CheckMediaUploadJobStateResponse()
+        {
+            State = (int)job.State,
+            MediaId = job.MediaId?.ToString() ?? null,
+            ErrorDetail = job.ErrorDetail
+        });
     }
 
     private UploadedMedia? FindMediaById(string mediaId)
