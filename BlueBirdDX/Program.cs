@@ -82,6 +82,10 @@ PostThreadManager.Initialize();
 
 MediaUploadJobManager.Initialize();
 
+await MediaUploadJobManager.Instance.ProcessAllWaitingReadyMediaJobs();
+
+await MediaUploadJobManager.Instance.CleanUpOldJobs();
+
 localLogContext.Information("Start up complete");
 
 IJobDetail processJob = JobBuilder.Create<BbProcessPostThreadsJob>()
@@ -114,8 +118,6 @@ await JobScheduler.Instance.ScheduleJob(threadsTokenJob, threadsTokenTrigger);
 
 _ = Task.Run(async () =>
 {
-    await MediaUploadJobManager.Instance.ProcessAllWaitingReadyMediaJobs();
-
     await MediaUploadJobManager.Instance.ListenForReadyMediaJobs();
 });
 

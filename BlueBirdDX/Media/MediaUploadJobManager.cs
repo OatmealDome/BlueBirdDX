@@ -1,3 +1,4 @@
+using Amazon.Runtime;
 using BlueBirdDX.Common.Media;
 using BlueBirdDX.Common.Storage;
 using BlueBirdDX.Config;
@@ -419,5 +420,59 @@ public class MediaUploadJobManager
                 }
             });
         }
+    }
+
+    private async Task CleanUpOldJob(MediaUploadJob uploadJob)
+    {
+        LogContext.Information("Deleting media job {jobId}", uploadJob._id.ToString());
+        
+        await _uploadJobCollection.DeleteOneAsync(Builders<MediaUploadJob>.Filter.Eq(j => j._id, uploadJob._id));
+        
+        if (!uploadJob.IsJobForMigrationTwoToThree)
+        {
+            string unprocessedFileName = "unprocessed_media/" + uploadJob._id.ToString();
+
+            try
+            {
+                await _remoteStorage.DeleteFile(unprocessedFileName);
+            }
+            catch (AmazonServiceException)
+            {
+                // ignore, this probably means that the file doesn't exist
+            }
+        }
+    }
+    
+    public async Task CleanUpOldJobs()
+    {
+        LogContext.Information("Cleaning up old media jobs");
+        
+        await _semaphore.WaitAsync();
+        
+        try
+        {
+            DateTime referenceNow = DateTime.UtcNow.Subtract(TimeSpan.FromDays(1));
+            
+            List<MediaUploadJob> oldJobs = _uploadJobCollection.AsQueryable().Where(j =>
+                j.State == MediaUploadJobState.Success || j.State == MediaUploadJobState.Failed).ToList();
+
+            foreach (MediaUploadJob uploadJob in oldJobs)
+            {
+                if (referenceNow > uploadJob.CreationTime)
+                {
+                    await CleanUpOldJob(uploadJob);
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            LogContext.Error(e, "Unexpected error during clean up");
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+        
+        LogContext.Information("Finished clean up");
     }
 }
