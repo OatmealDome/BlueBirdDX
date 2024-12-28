@@ -86,6 +86,7 @@ public sealed class BlueBirdClient
             new StringContent(json, Encoding.UTF8, "application/json"));
     }
     
+    [Obsolete("Use the media upload job APIs instead.")]
     public async Task<string> UploadMedia(string name, byte[] data, string altText = "")
     {
         MultipartFormDataContent content = new MultipartFormDataContent();
@@ -98,5 +99,62 @@ public sealed class BlueBirdClient
         UploadedMediaApi media = (await response.Content.ReadFromJsonAsync<UploadedMediaApi>())!;
 
         return media.Id;
+    }
+
+    public async Task<CreateMediaUploadJobResponse> CreateMediaUploadJob(string name, string mimeType,
+        string altText = "")
+    {
+        Dictionary<string, string> formDict = new Dictionary<string, string>()
+        {
+            { "name", name },
+            { "mimeType", mimeType },
+            { "altText", altText }
+        };
+
+        HttpResponseMessage responseMessage =
+            await SendRequestInternal(HttpMethod.Post, "/api/v2/media/job", new FormUrlEncodedContent(formDict));
+
+        return (await responseMessage.Content.ReadFromJsonAsync<CreateMediaUploadJobResponse>())!;
+    }
+    
+    public async Task SetMediaUploadJobAsReady(string jobId)
+    {
+        ChangeMediaUploadJobStateRequest request = new ChangeMediaUploadJobStateRequest()
+        {
+            State = 1
+        };
+
+        StringContent content = new StringContent(JsonSerializer.Serialize(request), Encoding.UTF8, "application/json");
+
+        await SendRequestInternal(HttpMethod.Put, $"/api/v2/media/job/{jobId}/state", content);
+    }
+
+    public async Task<CheckMediaUploadJobStateResponse> CheckMediaUploadJobState(string jobId)
+    {
+        HttpResponseMessage responseMessage =
+            await SendRequestInternal(HttpMethod.Get, $"/api/v2/media/job/{jobId}/state");
+        
+        return (await responseMessage.Content.ReadFromJsonAsync<CheckMediaUploadJobStateResponse>())!;
+    }
+
+    public async Task<CheckMediaUploadJobStateResponse> WaitForMediaUploadJobToFinish(string jobId, int timeout = 30)
+    {
+        int attempts = timeout;
+
+        while (attempts > 0)
+        {
+            CheckMediaUploadJobStateResponse response = await CheckMediaUploadJobState(jobId);
+
+            if (response.IsProcessingFinished())
+            {
+                return response;
+            }
+            
+            attempts--;
+            
+            await Task.Delay(TimeSpan.FromSeconds(1));
+        }
+
+        throw new BlueBirdException("Media upload job did not finish within the allotted time");
     }
 }
