@@ -17,6 +17,7 @@ using OatmealDome.Airship.Bluesky;
 using OatmealDome.Airship.Bluesky.Embed;
 using OatmealDome.Airship.Bluesky.Embed.Image;
 using OatmealDome.Airship.Bluesky.Embed.Record;
+using OatmealDome.Airship.Bluesky.Embed.Video;
 using OatmealDome.Airship.Bluesky.Feed;
 using OatmealDome.Airship.Bluesky.Feed.Facets;
 using OatmealDome.Unravel;
@@ -320,9 +321,19 @@ public class PostThreadManager
 
                     await _retryResiliencePipeline.ExecuteAsync(async (_) =>
                     {
-                        string uploadedMediaId =
-                            await client.UploadImage(attachmentCache.GetMediaData(mediaId, SocialPlatform.Twitter),
-                                altText.Length > 0 ? altText : null);
+                        byte[] mediaData = attachmentCache.GetMediaData(mediaId, SocialPlatform.Twitter);
+                        string? mediaAltText = altText.Length > 0 ? altText : null;
+
+                        string uploadedMediaId;
+
+                        if (attachmentCache.GetMediaMimeType(mediaId, SocialPlatform.Twitter).StartsWith("image/"))
+                        {
+                            uploadedMediaId = await client.UploadImage(mediaData, mediaAltText);
+                        }
+                        else
+                        {
+                            uploadedMediaId = await client.UploadVideo(mediaData, mediaAltText);
+                        }
 
                         uploadedMediaIds.Add(uploadedMediaId);
                     });
@@ -511,28 +522,66 @@ public class PostThreadManager
             
             foreach (ObjectId mediaId in item.AttachedMedia)
             {
+                string mimeType = attachmentCache.GetMediaMimeType(mediaId, SocialPlatform.Bluesky);
+                string altText = attachmentCache.GetMediaAltText(mediaId);
+                (int width, int height) aspectRatio = attachmentCache.GetMediaAspectRatio(mediaId);
+
+                GenericBlob? blob = null;
+                
                 await _retryResiliencePipeline.ExecuteAsync(async (_) =>
                 {
-                    GenericBlob blob = await client.Repo_CreateBlob(
-                        attachmentCache.GetMediaData(mediaId, SocialPlatform.Bluesky),
-                        attachmentCache.GetMediaMimeType(mediaId, SocialPlatform.Bluesky));
-
-                    (int width, int height) aspectRatio = attachmentCache.GetMediaAspectRatio(mediaId);
+                    blob = await client.Repo_CreateBlob(attachmentCache.GetMediaData(mediaId, SocialPlatform.Bluesky),
+                        mimeType);
+                });
                 
+                MediaAspectRatio mediaAspectRatio = new MediaAspectRatio()
+                {
+                    Width = aspectRatio.width,
+                    Height = aspectRatio.height
+                };
+
+                if (mimeType.StartsWith("image/"))
+                {
                     images.Add(new EmbeddedImage()
                     {
-                        Image = blob,
-                        AltText = attachmentCache.GetMediaAltText(mediaId),
-                        AspectRatio = new MediaAspectRatio()
-                        {
-                            Width = aspectRatio.width,
-                            Height = aspectRatio.height
-                        }
-                    }); 
-                });
+                        Image = blob!,
+                        AltText = altText,
+                        AspectRatio = mediaAspectRatio
+                    });
+                }
+                else
+                {
+                    if (embed != null)
+                    {
+                        throw new Exception("Can't have more than one video in a post on Bluesky");
+                    }
+
+                    embed = new VideoEmbed()
+                    {
+                        Video = blob!,
+                        AltText = altText,
+                        AspectRatio = mediaAspectRatio
+                    };
+                }
             }
 
-            if (images.Count > 0 && quotedRef != null)
+            if (embed is VideoEmbed && images.Count > 0)
+            {
+                throw new Exception("Can't have images at the same time as videos in one post on Bluesky");
+            }
+
+            if (embed is VideoEmbed && quotedRef != null)
+            {
+                embed = new RecordWithMediaEmbed()
+                {
+                    RecordEmbed = new RecordEmbed()
+                    {
+                        Record = quotedRef
+                    },
+                    MediaEmbed = embed
+                };
+            }
+            else if (images.Count > 0 && quotedRef != null)
             {
                 embed = new RecordWithMediaEmbed()
                 {
@@ -701,8 +750,8 @@ public class PostThreadManager
         foreach (PostThreadItem item in postThread.Items)
         {
             string text = item.Text;
-            
-            List<(string mediaUrl, string altText)> attachments = new List<(string mediaUrl, string altText)>();
+
+            List<(string mediaUrl, string mimeType, string altText)> attachments = new List<(string, string, string)>();
 
             string? quotedPostId = null;
             
@@ -716,7 +765,7 @@ public class PostThreadManager
                 }
                 else
                 {
-                    attachments.Add((quotedPost.ImageUrl, DifferentPlatformQuoteImageAltText));
+                    attachments.Add((quotedPost.ImageUrl, "image/jpeg", DifferentPlatformQuoteImageAltText));
                     
                     if (text != "")
                     {
@@ -731,6 +780,7 @@ public class PostThreadManager
             foreach (ObjectId attachmentId in item.AttachedMedia)
             {
                 attachments.Add((attachmentCache.GetMediaPreSignedUrl(attachmentId),
+                    attachmentCache.GetMediaMimeType(attachmentId, SocialPlatform.Threads),
                     attachmentCache.GetMediaAltText(attachmentId)));
             }
 
@@ -740,12 +790,24 @@ public class PostThreadManager
             {
                 List<string> subIds = new List<string>();
 
-                foreach ((string mediaUrl, string altText) in attachments)
+                foreach ((string mediaUrl, string mimeType, string altText) in attachments)
                 {
                     await _retryResiliencePipeline.ExecuteAsync(async (_) =>
                     {
-                        subIds.Add(await client.Publishing_CreateImageMediaContainer(mediaUrl, isCarouselItem: true,
-                            altText: altText));
+                        string subId;
+                        
+                        if (mimeType.StartsWith("image/"))
+                        {
+                            subId = await client.Publishing_CreateImageMediaContainer(mediaUrl, isCarouselItem: true,
+                                altText: altText);
+                        }
+                        else
+                        {
+                            subId = await client.Publishing_CreateVideoMediaContainer(mediaUrl, isCarouselItem: true,
+                                altText: altText);
+                        }
+                        
+                        subIds.Add(subId);
                     });
                 }
 
@@ -786,12 +848,20 @@ public class PostThreadManager
             }
             else if (attachments.Count == 1)
             {
-                (string mediaUrl, string altText) attachment = attachments[0];
+                (string mediaUrl, string mimeType, string altText) attachment = attachments[0];
                 
                 await _retryResiliencePipeline.ExecuteAsync(async (_) =>
                 {
-                    containerId = await client.Publishing_CreateImageMediaContainer(attachment.mediaUrl, text,
-                        previousId, quotedPostId: quotedPostId, altText: attachment.altText);
+                    if (attachment.mimeType.StartsWith("image/"))
+                    {
+                        containerId = await client.Publishing_CreateImageMediaContainer(attachment.mediaUrl, text,
+                            previousId, quotedPostId: quotedPostId, altText: attachment.altText);
+                    }
+                    else
+                    {
+                        containerId = await client.Publishing_CreateVideoMediaContainer(attachment.mediaUrl, text,
+                            previousId, quotedPostId: quotedPostId, altText: attachment.altText);
+                    }
                 });
             }
             else
