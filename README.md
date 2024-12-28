@@ -111,7 +111,7 @@ In a folder named `core-data`, create the following `config.json` file:
 }
 ```
 
-If you would like to disable 
+If you would like to disable video support, set `FFmpegBinariesFolder` to an empty string.
 
 ### Database Setup
 
