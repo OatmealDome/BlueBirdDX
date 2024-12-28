@@ -52,6 +52,7 @@ public class MediaUploadJobManager
     private readonly RemoteStorage _remoteStorage;
     private readonly IMongoCollection<MediaUploadJob> _uploadJobCollection;
     private readonly IMongoCollection<UploadedMedia> _mediaCollection;
+    private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
     private readonly bool _isVideoAvailable;
 
@@ -371,10 +372,23 @@ public class MediaUploadJobManager
     {
         LogContext.Information("Attempting to process all waiting media jobs");
         
-        foreach (MediaUploadJob uploadJob in _uploadJobCollection.AsQueryable()
-                     .Where(j => j.State == MediaUploadJobState.Ready))
+        await _semaphore.WaitAsync();
+
+        try
         {
-            await ProcessMediaJob(uploadJob);
+            foreach (MediaUploadJob uploadJob in _uploadJobCollection.AsQueryable()
+                         .Where(j => j.State == MediaUploadJobState.Ready))
+            {
+                await ProcessMediaJob(uploadJob);
+            }
+        }
+        catch (Exception e)
+        {
+            LogContext.Error(e, "Unexpected error during processing of waiting jobs");
+        }
+        finally
+        {
+            _semaphore.Release();
         }
         
         LogContext.Information("All waiting media jobs have been processed");
@@ -387,7 +401,23 @@ public class MediaUploadJobManager
             ObjectId objectId = ObjectId.Parse(message.Data);
             MediaUploadJob uploadJob = _uploadJobCollection.AsQueryable().FirstOrDefault(j => j._id == objectId)!;
 
-            _ = Task.Run(() => ProcessMediaJob(uploadJob));
+            _ = Task.Run(async () =>
+            {
+                await _semaphore.WaitAsync();
+
+                try
+                {
+                    await ProcessMediaJob(uploadJob);
+                }
+                catch (Exception e)
+                {
+                    LogContext.Error(e, "Unexpected error during processing a ready job");
+                }
+                finally
+                {
+                    _semaphore.Release();
+                }
+            });
         }
     }
 }
