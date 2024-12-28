@@ -35,6 +35,21 @@ public class BbTwitterClient
         return media.Id.ToString()!;
     }
     
+    public async Task<string> UploadVideo(byte[] image, string? altText = null)
+    {
+        IMedia media = await _internalClient.Upload.UploadTweetVideoAsync(image);
+
+        if (altText != null)
+        {
+            await _internalClient.Upload.AddMediaMetadataAsync(new AddMediaMetadataParameters(media.Id)
+            {
+                AltText = altText
+            });
+        }
+
+        return media.Id.ToString()!;
+    }
+    
     public async Task<string> Tweet(string text, string? quotedTweetId = null, string? replyToTweetId = null, string[]? mediaIds = null)
     {
         TweetV2RequestMedia? tweetRequestMedia = null;
