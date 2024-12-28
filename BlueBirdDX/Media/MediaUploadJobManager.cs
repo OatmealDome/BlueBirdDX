@@ -288,6 +288,9 @@ public class MediaUploadJobManager
             unprocessedFileName = "unprocessed_media/" + uploadJob._id.ToString();
         }
         
+        await _uploadJobCollection.UpdateOneAsync(Builders<MediaUploadJob>.Filter.Eq(j => j._id, uploadJob._id),
+            Builders<MediaUploadJob>.Update.Set(j => j.State, MediaUploadJobState.Processing));
+        
         try
         {
             byte[] data = await _remoteStorage.DownloadFile(unprocessedFileName);
