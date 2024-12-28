@@ -69,7 +69,7 @@ public class MediaUploadJobManager
 
         VideoConfig videoConfig = BbConfig.Instance.Video;
 
-        if (videoConfig.FFmpegBinariesFolder != null)
+        if (videoConfig.FFmpegBinariesFolder != null || videoConfig.FFmpegBinariesFolder == "")
         {
             GlobalFFOptions.Configure(new FFOptions()
             {
