@@ -84,8 +84,6 @@ MediaUploadJobManager.Initialize();
 
 await MediaUploadJobManager.Instance.ProcessAllWaitingReadyMediaJobs();
 
-await MediaUploadJobManager.Instance.CleanUpOldJobs();
-
 localLogContext.Information("Start up complete");
 
 IJobDetail processJob = JobBuilder.Create<BbProcessPostThreadsJob>()
@@ -115,6 +113,20 @@ ITrigger threadsTokenTrigger = TriggerBuilder.Create()
     .Build();
 
 await JobScheduler.Instance.ScheduleJob(threadsTokenJob, threadsTokenTrigger);
+
+IJobDetail mediaJobCleanUpJob = JobBuilder.Create<BbCleanUpOldMediaUploadJobsJob>()
+    .WithIdentity("mediaJobCleanUpJob")
+    .Build();
+
+ITrigger mediaJobCleanUpTrigger = TriggerBuilder.Create()
+    .WithIdentity("mediaJobCleanUpTrigger")
+    .StartAt(DateTime.UtcNow)
+    .WithSimpleSchedule(builder => builder
+        .WithIntervalInHours(24)
+        .RepeatForever())
+    .Build();
+
+await JobScheduler.Instance.ScheduleJob(mediaJobCleanUpJob, mediaJobCleanUpTrigger);
 
 _ = Task.Run(async () =>
 {
