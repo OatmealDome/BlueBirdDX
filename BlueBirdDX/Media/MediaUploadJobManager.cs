@@ -58,6 +58,66 @@ public class MediaUploadJobManager
         _instance = new MediaUploadJobManager();
     }
 
+    private async Task ProcessImage(UploadedMedia media, byte[] imageData, Dictionary<SocialPlatform, byte[]> optimizedImages)
+    {
+        using MemoryStream inputStream = new MemoryStream(imageData);
+        using Image image = await Image.LoadAsync(inputStream);
+
+        media.Width = image.Width;
+        media.Height = image.Height;
+
+        async Task ResizeImageToFitSizeLimit(Image targetImage, int maxSize, SocialPlatform platform)
+        {
+            int quality = 100;
+            byte[] resizedData = imageData;
+
+            while (resizedData.Length > maxSize)
+            {
+                if (quality == 0)
+                {
+                    throw new Exception($"Image is too large and can't be resized to fit within {maxSize} bytes");
+                }
+            
+                using MemoryStream outputStream = new MemoryStream();
+
+                await targetImage.SaveAsync(outputStream, new JpegEncoder()
+                {
+                    Quality = quality
+                });
+
+                quality--;
+
+                resizedData = outputStream.ToArray();
+            }
+
+            optimizedImages[platform] = resizedData;
+        }
+
+        if (imageData.Length > TwitterMaximumImageSize)
+        {
+            await ResizeImageToFitSizeLimit(image, TwitterMaximumImageSize, SocialPlatform.Twitter);
+            media.HasTwitterOptimizedVersion = true;
+        }
+
+        if (imageData.Length > BlueskyMaximumImageSize)
+        {
+            await ResizeImageToFitSizeLimit(image, BlueskyMaximumImageSize, SocialPlatform.Bluesky);
+            media.HasBlueskyOptimizedVersion = true;
+        }
+
+        if (imageData.Length > MastodonMaximumImageSize)
+        {
+            await ResizeImageToFitSizeLimit(image, MastodonMaximumImageSize, SocialPlatform.Mastodon);
+            media.HasMastodonOptimizedVersion = true;
+        }
+
+        if (imageData.Length > ThreadsMaximumImageSize)
+        {
+            await ResizeImageToFitSizeLimit(image, ThreadsMaximumImageSize, SocialPlatform.Threads);
+            media.HasThreadsOptimizedVersion = true;
+        }
+    }
+
     private async Task ProcessMediaJob(MediaUploadJob uploadJob)
     {
         UploadedMedia media;
@@ -94,65 +154,17 @@ public class MediaUploadJobManager
         
         try
         {
-            byte[] imageData = await _remoteStorage.DownloadFile(unprocessedFileName);
+            byte[] data = await _remoteStorage.DownloadFile(unprocessedFileName);
 
-            using MemoryStream inputStream = new MemoryStream(imageData);
-            using Image image = await Image.LoadAsync(inputStream);
+            Dictionary<SocialPlatform, byte[]> optimizedData = new Dictionary<SocialPlatform, byte[]>();
 
-            media.Width = image.Width;
-            media.Height = image.Height;
-
-            Dictionary<SocialPlatform, byte[]> optimizedImages = new Dictionary<SocialPlatform, byte[]>();
-            
-            async Task ResizeImageToFitSizeLimit(Image targetImage, int maxSize, SocialPlatform platform)
+            if (uploadJob.MimeType.StartsWith("image/") || uploadJob.IsJobForMigrationTwoToThree)
             {
-                int quality = 100;
-                byte[] resizedData = imageData;
-
-                while (resizedData.Length > maxSize)
-                {
-                    if (quality == 0)
-                    {
-                        throw new Exception($"Image is too large and can't be resized to fit within {maxSize} bytes");
-                    }
-                
-                    using MemoryStream outputStream = new MemoryStream();
-
-                    await targetImage.SaveAsync(outputStream, new JpegEncoder()
-                    {
-                        Quality = quality
-                    });
-
-                    quality--;
-
-                    resizedData = outputStream.ToArray();
-                }
-
-                optimizedImages[platform] = resizedData;
+                await ProcessImage(media, data, optimizedData);
             }
-
-            if (imageData.Length > TwitterMaximumImageSize)
+            else
             {
-                await ResizeImageToFitSizeLimit(image, TwitterMaximumImageSize, SocialPlatform.Twitter);
-                media.HasTwitterOptimizedVersion = true;
-            }
-
-            if (imageData.Length > BlueskyMaximumImageSize)
-            {
-                await ResizeImageToFitSizeLimit(image, BlueskyMaximumImageSize, SocialPlatform.Bluesky);
-                media.HasBlueskyOptimizedVersion = true;
-            }
-
-            if (imageData.Length > MastodonMaximumImageSize)
-            {
-                await ResizeImageToFitSizeLimit(image, MastodonMaximumImageSize, SocialPlatform.Mastodon);
-                media.HasMastodonOptimizedVersion = true;
-            }
-
-            if (imageData.Length > ThreadsMaximumImageSize)
-            {
-                await ResizeImageToFitSizeLimit(image, ThreadsMaximumImageSize, SocialPlatform.Threads);
-                media.HasThreadsOptimizedVersion = true;
+                throw new NotImplementedException($"Mime type {uploadJob.MimeType} is not supported");
             }
             
             string fileName = $"media/{media._id.ToString()}";
@@ -161,10 +173,10 @@ public class MediaUploadJobManager
             {
                 await _remoteStorage.DeleteFile(unprocessedFileName);
             
-                _remoteStorage.TransferFile(fileName, imageData, media.MimeType);
+                _remoteStorage.TransferFile(fileName, data, media.MimeType);
             }
 
-            foreach (KeyValuePair<SocialPlatform, byte[]> pair in optimizedImages)
+            foreach (KeyValuePair<SocialPlatform, byte[]> pair in optimizedData)
             {
                 _remoteStorage.TransferFile($"{fileName}_{pair.Key.ToString().ToLower()}", pair.Value, "image/jpeg");
             }
