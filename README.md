@@ -11,7 +11,7 @@ BlueBirdDX is made up of two primary applications:
 * Core: runs in the background and sends posts to each social media site
 * WebApp: allows the user to create threads and upload media via their web browser (also contains an API backend)
 
-MongoDB is used as the database system, and media files are stored on an Amazon S3 bucket. If a post contains a quoted tweet, Selenium WebDriver is used to generate a screenshot of the tweet which is then attached to posts made on non-Twitter social media services.
+MongoDB is used as the database system, and media files are stored on an Amazon S3 bucket. If a post contains a quoted tweet, Selenium WebDriver is used to generate a screenshot of the tweet which is then attached to posts made on non-Twitter social media services. NATS is used as a way for the WebApp to trigger events on the Core.
 
 TextWrapper is a small Node application that wraps the twitter-text library. Please check [its README file](BlueBirdDX.TextWrapper/README.md) for more information.
 
@@ -21,7 +21,7 @@ Please note that the WebApp has no built-in authentication or authorization! **I
 
 ## Setup
 
-First, ensure that a MongoDB instance, an Amazon S3 bucket, and a Selenium WebDriver compatible browser are ready.
+A sample set up with Docker is detailed below.
 
 ### Initial Steps
 
@@ -37,6 +37,10 @@ services:
 
   selenium-standalone-chrome:
     image: selenium/standalone-chrome
+    restart: unless-stopped
+
+  nats:
+    image: nats:2
     restart: unless-stopped
 
   textwrapper:
@@ -69,6 +73,7 @@ services:
       RemoteStorageSettings__Bucket: "<S3 bucket name>"
       RemoteStorageSettings__AccessKey: "<S3 access key>"
       RemoteStorageSettings__AccessKeySecret: "<S3 access key secret>"
+      NotificationSettings__Server: "nats"
 ```
 
 In a folder named `core-data`, create the following `config.json` file:
@@ -95,9 +100,18 @@ In a folder named `core-data`, create the following `config.json` file:
   },
   "TextWrapper": {
     "ServerUrl": "http://textwrapper"
+  },
+  "Notification": {
+    "Server": "nats"
+  },
+  "Video": {
+    "FFmpegBinariesFolder": "/usr/bin",
+    "TemporaryFolder": "/tmp"
   }
 }
 ```
+
+If you would like to disable 
 
 ### Database Setup
 
@@ -105,6 +119,7 @@ Create the following collections underneath your specified database:
 
 * `accounts`
 * `media`
+* `media_jobs`
 * `threads`
 
 ### Adding Accounts
@@ -159,7 +174,7 @@ On the home page, you can see all threads associated with the currently selected
 
 ## API
 
-A API library, `BlueBirdDX.Api`, is provided for those who want to automate usage of BlueBird.
+An API library, `BlueBirdDX.Api`, is provided for those who want to automate usage of BlueBird.
 
 First, create a `BlueBirdClient` instance:
 
@@ -170,8 +185,25 @@ BlueBirdClient client = new BlueBirdClient("http://webapp");
 You can then use the client to upload media and enqueue threads:
 
 ```csharp
-string mediaId = await client.UploadMedia("Media Name", data, "Media Alt Text");
+// Create a new media upload job.
+CreateMediaUploadJobResponse createResponse = await client.CreateMediaUploadJob("Media Name", "image/jpeg", "Alt text");
 
+// Upload the image to the S3 bucket.
+HttpClient httpClient = new HttpClient();
+await httpClient.PutAsync(createResponse.TargetUrl, new ByteArrayContent(data));
+
+// Set the job as ready for processing.
+await client.SetMediaUploadJobAsReady(createResponse.Id);
+
+// Wait for the media to be processed.
+CheckMediaUploadJobStateResponse checkResponse = await client.WaitForMediaUploadJobToFinish(createResponse.Id);
+
+if (checkResponse.IsFailure())
+{
+    // Error handling.
+}
+
+// Create a new thread.
 PostThreadApi thread = new PostThreadApi()
 {
     Name = "Thread Name",
@@ -188,11 +220,12 @@ PostThreadApi thread = new PostThreadApi()
             Text = "Hello, World!",
             AttachedMedia = new List<string>()
             {
-                mediaId
+                checkResponse.Id
             }
         }
     }
 };
 
+// Post the thread.
 await client.EnqueuePostThread(thread);
 ```
