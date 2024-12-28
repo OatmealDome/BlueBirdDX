@@ -453,8 +453,7 @@ public class MediaUploadJobManager
         {
             DateTime referenceNow = DateTime.UtcNow.Subtract(TimeSpan.FromDays(1));
             
-            List<MediaUploadJob> oldJobs = _uploadJobCollection.AsQueryable().Where(j =>
-                j.State == MediaUploadJobState.Success || j.State == MediaUploadJobState.Failed).ToList();
+            List<MediaUploadJob> oldJobs = _uploadJobCollection.AsQueryable().ToList();
 
             foreach (MediaUploadJob uploadJob in oldJobs)
             {
