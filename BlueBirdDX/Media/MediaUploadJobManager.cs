@@ -2,8 +2,11 @@ using BlueBirdDX.Common.Media;
 using BlueBirdDX.Common.Storage;
 using BlueBirdDX.Config;
 using BlueBirdDX.Config.Storage;
+using BlueBirdDX.Config.Video;
 using BlueBirdDX.Database;
 using BlueBirdDX.Util;
+using FFMpegCore;
+using FFMpegCore.Enums;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using NATS.Client.Core;
@@ -19,15 +22,25 @@ public class MediaUploadJobManager
 {
     // https://developer.x.com/en/docs/x-api/v1/media/upload-media/uploading-media/media-best-practices
     private const int TwitterMaximumImageSize = 5242880;
+    private const int TwitterMaximumVideoSize = 536870912;
     
     // https://github.com/bluesky-social/social-app/blob/f0cd8ab6f46f45c79de5aaf6eb7def782dc99836/src/state/models/media/image.ts#L22
     private const int BlueskyMaximumImageSize = 976560;
+    // https://bsky.app/profile/layeredstrange.uk/post/3l4qpvrexds2y
+    private const int BlueskyMaximumVideoSize = 52428800;
     
     // https://docs.joinmastodon.org/user/posting/
     private const int MastodonMaximumImageSize = 16777216;
+    private const int MastodonMaximumVideoSize = 103809024;
     
     // https://support.buffer.com/article/617-ideal-image-sizes-and-formats-for-your-posts
     private const int ThreadsMaximumImageSize = 8388608;
+    // https://help.gainapp.com/article/218-creating-content-for-threads
+    // Technically, the limit is 1GB+, but let's not upload videos that size. I'll use Twitter's limit instead.
+    private const int ThreadsMaximumVideoSize = TwitterMaximumVideoSize;
+
+    private const int VideoFileSizeMargin = 5242880;
+    private const int VideoTargetAudioBitrate = 128;
     
     private static readonly ILogger LogContext =
         Log.ForContext(Constants.SourceContextPropertyName, "MediaUploadJobManager");
@@ -40,6 +53,8 @@ public class MediaUploadJobManager
     private readonly IMongoCollection<MediaUploadJob> _uploadJobCollection;
     private readonly IMongoCollection<UploadedMedia> _mediaCollection;
 
+    private readonly bool _isVideoAvailable;
+
     public MediaUploadJobManager()
     {
         _natsClient = new NatsClient(BbConfig.Instance.Notification.Server);
@@ -51,6 +66,19 @@ public class MediaUploadJobManager
 
         _uploadJobCollection = DatabaseManager.Instance.GetCollection<MediaUploadJob>("media_jobs");
         _mediaCollection = DatabaseManager.Instance.GetCollection<UploadedMedia>("media");
+
+        VideoConfig videoConfig = BbConfig.Instance.Video;
+
+        if (videoConfig.FFmpegBinariesFolder != null)
+        {
+            GlobalFFOptions.Configure(new FFOptions()
+            {
+                BinaryFolder = videoConfig.FFmpegBinariesFolder,
+                TemporaryFilesFolder = videoConfig.TemporaryFolder
+            });
+
+            _isVideoAvailable = true;
+        }
     }
     
     public static void Initialize()
@@ -58,7 +86,8 @@ public class MediaUploadJobManager
         _instance = new MediaUploadJobManager();
     }
 
-    private async Task ProcessImage(UploadedMedia media, byte[] imageData, Dictionary<SocialPlatform, byte[]> optimizedImages)
+    private async Task<byte[]> ProcessImage(UploadedMedia media, byte[] imageData,
+        Dictionary<SocialPlatform, byte[]> optimizedImages)
     {
         using MemoryStream inputStream = new MemoryStream(imageData);
         using Image image = await Image.LoadAsync(inputStream);
@@ -116,6 +145,111 @@ public class MediaUploadJobManager
             await ResizeImageToFitSizeLimit(image, ThreadsMaximumImageSize, SocialPlatform.Threads);
             media.HasThreadsOptimizedVersion = true;
         }
+
+        return imageData;
+    }
+
+    private async Task<byte[]> ProcessVideo(UploadedMedia media, byte[] videoData,
+        Dictionary<SocialPlatform, byte[]> optimizedVideos)
+    {
+        string path = Path.Combine(BbConfig.Instance.Video.TemporaryFolder, Path.GetRandomFileName());
+
+        await File.WriteAllBytesAsync(path, videoData);
+
+        IMediaAnalysis analysis = await FFProbe.AnalyseAsync(path);
+
+        media.MimeType = "video/mp4"; // We will re-encode the input video to MP4.
+        media.Width = analysis.PrimaryVideoStream!.Width;
+        media.Height = analysis.PrimaryVideoStream!.Height;
+
+        string standardPath = Path.Combine(BbConfig.Instance.Video.TemporaryFolder, Path.GetRandomFileName() + ".mp4");
+        
+        bool returnCode = FFMpegArguments
+            .FromFileInput(path)
+            .OutputToFile(standardPath, false, options => options
+                .WithVideoCodec(VideoCodec.LibX264)
+                .WithAudioCodec(AudioCodec.Aac))
+            .ProcessSynchronously();
+
+        if (!returnCode)
+        {
+            throw new Exception("Failed to re-encode video to H.264 & AAC");
+        }
+
+        byte[] standardVideo = await File.ReadAllBytesAsync(standardPath);
+
+        // This method implements the two-pass algorithm found here:
+        // https://trac.ffmpeg.org/wiki/Encode/H.264#twopass
+        
+        async Task EncodeVideoForPlatform(SocialPlatform platform, int maximumSize)
+        {
+            int targetSize = maximumSize - VideoFileSizeMargin;
+
+            double targetVideoBitrate =
+                ((targetSize * 8388.608) / analysis.Duration.TotalSeconds) - VideoTargetAudioBitrate;
+
+            int roundedVideoBitrate = (int)Math.Round(targetVideoBitrate / 100d, 0) * 100;
+
+            bool localReturnCode = FFMpegArguments
+                .FromFileInput(path)
+                .OutputToFile("/dev/null", true, options => options
+                    .WithVideoCodec(VideoCodec.LibX264)
+                    .WithVideoBitrate(roundedVideoBitrate)
+                    .WithCustomArgument("-fps_mode cfr")
+                    .WithCustomArgument("-pass 1")
+                    .ForceFormat("null"))
+                .ProcessSynchronously();
+
+            if (!localReturnCode)
+            {
+                throw new Exception("First pass for platform-specific video encoding failed");
+            }
+
+            string outPath = Path.Combine(BbConfig.Instance.Video.TemporaryFolder, Path.GetRandomFileName() + ".mp4");
+            
+            localReturnCode = FFMpegArguments
+                .FromFileInput(path)
+                .OutputToFile(outPath, false, options => options
+                    .WithVideoCodec(VideoCodec.LibX264)
+                    .WithVideoBitrate(roundedVideoBitrate)
+                    .WithAudioCodec(AudioCodec.Aac)
+                    .WithAudioBitrate((int)VideoTargetAudioBitrate)
+                    .WithCustomArgument("-pass 2"))
+                .ProcessSynchronously();
+
+            if (!localReturnCode)
+            {
+                throw new Exception("Second pass for platform-specific video re-encoding failed");
+            }
+
+            optimizedVideos[platform] = await File.ReadAllBytesAsync(outPath);
+        }
+        
+        if (standardVideo.Length > TwitterMaximumVideoSize)
+        {
+            await EncodeVideoForPlatform(SocialPlatform.Twitter, TwitterMaximumVideoSize);
+            media.HasTwitterOptimizedVersion = true;
+        }
+
+        if (standardVideo.Length > BlueskyMaximumVideoSize)
+        {
+            await EncodeVideoForPlatform(SocialPlatform.Bluesky, BlueskyMaximumVideoSize);
+            media.HasBlueskyOptimizedVersion = true;
+        }
+
+        if (standardVideo.Length > MastodonMaximumVideoSize)
+        {
+            await EncodeVideoForPlatform(SocialPlatform.Mastodon, MastodonMaximumVideoSize);
+            media.HasMastodonOptimizedVersion = true;
+        }
+
+        if (standardVideo.Length > ThreadsMaximumVideoSize)
+        {
+            await EncodeVideoForPlatform(SocialPlatform.Threads, ThreadsMaximumVideoSize);
+            media.HasThreadsOptimizedVersion = true;
+        }
+        
+        return standardVideo;
     }
 
     private async Task ProcessMediaJob(MediaUploadJob uploadJob)
@@ -156,11 +290,22 @@ public class MediaUploadJobManager
         {
             byte[] data = await _remoteStorage.DownloadFile(unprocessedFileName);
 
+            byte[] standardData;
+
             Dictionary<SocialPlatform, byte[]> optimizedData = new Dictionary<SocialPlatform, byte[]>();
 
             if (uploadJob.MimeType.StartsWith("image/") || uploadJob.IsJobForMigrationTwoToThree)
             {
-                await ProcessImage(media, data, optimizedData);
+                standardData = await ProcessImage(media, data, optimizedData);
+            }
+            else if (uploadJob.MimeType.StartsWith("video/"))
+            {
+                if (!_isVideoAvailable)
+                {
+                    throw new NotSupportedException("Video support is not configured");
+                }
+                
+                standardData = await ProcessVideo(media, data, optimizedData);
             }
             else
             {
@@ -173,7 +318,7 @@ public class MediaUploadJobManager
             {
                 await _remoteStorage.DeleteFile(unprocessedFileName);
             
-                _remoteStorage.TransferFile(fileName, data, media.MimeType);
+                _remoteStorage.TransferFile(fileName, standardData, media.MimeType);
             }
 
             foreach (KeyValuePair<SocialPlatform, byte[]> pair in optimizedData)
