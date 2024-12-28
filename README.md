@@ -91,7 +91,7 @@ In a folder named `core-data`, create the following `config.json` file:
   },
   "WebDriver": {
     "NodeUrl": "http://selenium-standalone-chrome:4444/wd/hub",
-    "ScreenshotUrlFormat": "http://webapp:8080/quote/{0}?url={1}"
+    "WebAppUrl": "http://webapp:8080"
   },
   "TextWrapper": {
     "ServerUrl": "http://textwrapper"
