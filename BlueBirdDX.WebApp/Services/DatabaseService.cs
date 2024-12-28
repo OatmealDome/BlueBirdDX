@@ -12,6 +12,7 @@ public class DatabaseService
 
     public readonly IMongoCollection<AccountGroup> AccountGroupCollection;
     public readonly IMongoCollection<UploadedMedia> UploadedMediaCollection;
+    public readonly IMongoCollection<MediaUploadJob> MediaUploadJobCollection;
     public readonly IMongoCollection<PostThread> PostThreadCollection;
 
     public DatabaseService(DatabaseSettings settings)
@@ -22,6 +23,7 @@ public class DatabaseService
 
         AccountGroupCollection = database.GetCollection<AccountGroup>("accounts");
         UploadedMediaCollection = database.GetCollection<UploadedMedia>("media");
+        MediaUploadJobCollection = database.GetCollection<MediaUploadJob>("media_jobs");
         PostThreadCollection = database.GetCollection<PostThread>("threads");
     }
 }
