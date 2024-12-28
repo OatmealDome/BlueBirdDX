@@ -765,7 +765,7 @@ public class PostThreadManager
                 }
                 else
                 {
-                    attachments.Add((quotedPost.ImageUrl, "image/jpeg", DifferentPlatformQuoteImageAltText));
+                    attachments.Add((quotedPost.ImageUrl, "image/png", DifferentPlatformQuoteImageAltText));
                     
                     if (text != "")
                     {
