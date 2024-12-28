@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using BlueBirdDX.Config.Database;
 using BlueBirdDX.Config.Logging;
+using BlueBirdDX.Config.Notification;
 using BlueBirdDX.Config.Storage;
 using BlueBirdDX.Config.TextWrapper;
 using BlueBirdDX.Config.WebDriver;
@@ -45,6 +46,13 @@ public class BbConfig
 
     [JsonPropertyName("TextWrapper")]
     public TextWrapperConfig TextWrapper
+    {
+        get;
+        set;
+    }
+
+    [JsonPropertyName("Notification")]
+    public NotificationConfig Notification
     {
         get;
         set;
