@@ -62,12 +62,21 @@ public class AttachmentCache
 
     public string GetMediaMimeType(ObjectId mediaId, SocialPlatform platform)
     {
+        UploadedMedia media = _mediaDocumentCache[mediaId];
+        
         if (_mediaOptimizedDataCache[platform].ContainsKey(mediaId))
         {
-            return "image/jpeg";
+            if (media.MimeType.StartsWith("image/"))
+            {
+                return "image/jpeg";
+            }
+            else
+            {
+                return "video/mp4";
+            }
         }
         
-        return _mediaDocumentCache[mediaId].MimeType;
+        return media.MimeType;
     }
 
     public string GetMediaAltText(ObjectId mediaId)
