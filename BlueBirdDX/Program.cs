@@ -1,5 +1,6 @@
 ﻿using BlueBirdDX.Config;
 using BlueBirdDX.Database;
+using BlueBirdDX.Media;
 using BlueBirdDX.Scheduler;
 using BlueBirdDX.Scheduler.Job;
 using BlueBirdDX.Social;
@@ -79,6 +80,8 @@ AccountGroupManager.Initialize();
 
 PostThreadManager.Initialize();
 
+MediaUploadJobManager.Initialize();
+
 localLogContext.Information("Start up complete");
 
 IJobDetail processJob = JobBuilder.Create<BbProcessPostThreadsJob>()
@@ -108,5 +111,12 @@ ITrigger threadsTokenTrigger = TriggerBuilder.Create()
     .Build();
 
 await JobScheduler.Instance.ScheduleJob(threadsTokenJob, threadsTokenTrigger);
+
+_ = Task.Run(async () =>
+{
+    await MediaUploadJobManager.Instance.ProcessAllWaitingReadyMediaJobs();
+
+    await MediaUploadJobManager.Instance.ListenForReadyMediaJobs();
+});
 
 await Task.Delay(-1);
