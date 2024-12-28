@@ -137,7 +137,7 @@ public sealed class BlueBirdClient
         return (await responseMessage.Content.ReadFromJsonAsync<CheckMediaUploadJobStateResponse>())!;
     }
 
-    public async Task<CheckMediaUploadJobStateResponse> WaitForMediaUploadJobToFinish(string jobId, int timeout = 30)
+    public async Task<CheckMediaUploadJobStateResponse> WaitForMediaUploadJobToFinish(string jobId, int timeout = 60)
     {
         int attempts = timeout;
 
