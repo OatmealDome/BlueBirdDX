@@ -119,8 +119,56 @@
 
 @section Scripts {
     <script>
+        let jobId = null;
         let file = null;
         let pasteMode = 0;
+        
+        function waitUntilJobFinished() {
+            $.ajax({
+                method: "GET",
+                url: "/api/v2/media/job/" + jobId + "/state",
+                processData: false,
+                contentType: "application/json"
+            }).done(function (response) {
+                if (response.state === 3) {
+                    window.location = "/media";
+                } else if (response.state === 4) {
+                    showErrorModal(response.error_detail);
+                } else {
+                    setTimeout(waitUntilJobFinished, 1000);
+                }
+            }).fail(function () {
+                showErrorModal("Failed to fetch state of media upload job.");
+            });            
+        }
+        
+        function markJobAsReady(response) {
+            $.ajax({
+                method: "PUT",
+                url: "/api/v2/media/job/" + jobId + "/state",
+                data: JSON.stringify({
+                    state: 1
+                }),
+                processData: false,
+                contentType: "application/json"
+            }).done(waitUntilJobFinished).fail(function () {
+                showErrorModal("Failed to mark media upload job as ready for processing.");
+            });
+        }
+        
+        function uploadMediaToStorage(response) {
+            jobId = response.id;
+            
+            $.ajax({
+                method: "PUT",
+                url: response.target_url,
+                data: file,
+                processData: false,
+                contentType: false
+            }).done(markJobAsReady).fail(function () {
+                showErrorModal("Failed to upload file to remote storage.");
+            });
+        }
         
         function showErrorModal(errorMessage) {
             $("#error-element").text("An error occurred. " + errorMessage);
@@ -172,19 +220,17 @@
                 
                 const formData = new FormData();
                 formData.set("name", $("#nameInput").val());
-                formData.set("file", file);
                 formData.set("altText", $("#altInput").val());
+                formData.set("mimeType", file.type);
                 
                 $.ajax({
                     method: "POST",
-                    url: "/api/v1/media",
+                    url: "/api/v2/media/job",
                     data: formData,
                     processData: false,
                     contentType: false
-                }).done(function (response) {
-                    window.location = "/media";
-                }).fail(function () {
-                    showErrorModal("Failed to upload file.");
+                }).done(uploadMediaToStorage).fail(function () {
+                    showErrorModal("Failed to create a new media upload job.");
                 });
             });
             
