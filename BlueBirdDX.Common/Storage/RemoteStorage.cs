@@ -77,4 +77,15 @@ public class RemoteStorage
 
         return memoryStream.ToArray();
     }
+
+    public async Task DeleteFile(string name)
+    {
+        DeleteObjectRequest request = new DeleteObjectRequest()
+        {
+            BucketName = _bucketName,
+            Key = name
+        };
+
+        await _client.DeleteObjectAsync(request);
+    }
 }
