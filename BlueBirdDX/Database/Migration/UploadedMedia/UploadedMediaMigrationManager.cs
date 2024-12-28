@@ -6,6 +6,7 @@ public class UploadedMediaMigrationManager : MigrationManager
 
     protected override IEnumerable<IDocumentMigrator> Migrators => new List<IDocumentMigrator>()
     {
-        new UploadedMediaMigratorOneToTwo()
+        new UploadedMediaMigratorOneToTwo(),
+        new UploadedMediaMigratorTwoToThree()
     };
 }
