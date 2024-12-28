@@ -30,6 +30,30 @@ public sealed class BlueBirdClient
         //
     }
 
+    private async Task<HttpResponseMessage> SendRequestInternal(HttpRequestMessage requestMessage)
+    {
+        HttpResponseMessage responseMessage = await _httpClient.SendAsync(requestMessage);
+        
+        if (!responseMessage.IsSuccessStatusCode)
+        {
+            string response;
+            
+            try
+            {
+                response = await responseMessage.Content.ReadAsStringAsync();
+            }
+            catch (Exception)
+            {
+                throw new BlueBirdException(
+                    $"Received HTTP status code {responseMessage.StatusCode}, failed to read response");
+            }
+
+            throw new BlueBirdException($"Status code {responseMessage.StatusCode}, response: \"" + response + "\"");
+        }
+
+        return responseMessage;
+    }
+
     private async Task<HttpResponseMessage> SendRequestInternal(HttpMethod method, string endpoint,
         HttpContent? bodyContent = null)
     {
@@ -52,29 +76,9 @@ public sealed class BlueBirdClient
         {
             Content = bodyContent
         };
-        
-        HttpResponseMessage responseMessage = await _httpClient.SendAsync(requestMessage);
-        
-        if (!responseMessage.IsSuccessStatusCode)
-        {
-            string response;
-            
-            try
-            {
-                response = await responseMessage.Content.ReadAsStringAsync();
-            }
-            catch (Exception)
-            {
-                throw new BlueBirdException(
-                    $"Received HTTP status code {responseMessage.StatusCode}, failed to read response");
-            }
 
-            throw new BlueBirdException($"Status code {responseMessage.StatusCode}, response: \"" + response + "\"");
-        }
-
-        return responseMessage;
+        return await SendRequestInternal(requestMessage);
     }
-    
     
     public async Task EnqueuePostThread(PostThreadApi apiThread)
     {
@@ -86,7 +90,7 @@ public sealed class BlueBirdClient
             new StringContent(json, Encoding.UTF8, "application/json"));
     }
     
-    [Obsolete("Use the media upload job APIs instead.")]
+    [Obsolete("Use UploadMedia(name, mimeType, data, altText) or the media upload job helpers instead. This method uses an old API endpoint which is only kept for backwards compatibility, and is incompatible with video.")]
     public async Task<string> UploadMedia(string name, byte[] data, string altText = "")
     {
         MultipartFormDataContent content = new MultipartFormDataContent();
@@ -99,6 +103,23 @@ public sealed class BlueBirdClient
         UploadedMediaApi media = (await response.Content.ReadFromJsonAsync<UploadedMediaApi>())!;
 
         return media.Id;
+    }
+
+    public async Task<CheckMediaUploadJobStateResponse> UploadMedia(string name, string mimeType, byte[] data,
+        string altText = "")
+    {
+        CreateMediaUploadJobResponse createResponse = await CreateMediaUploadJob(name, mimeType, altText);
+    
+        HttpRequestMessage putRequest = new HttpRequestMessage(HttpMethod.Put, createResponse.TargetUrl)
+        {
+            Content = new ByteArrayContent(data)
+        };
+
+        await SendRequestInternal(putRequest);
+        
+        await SetMediaUploadJobAsReady(createResponse.Id);
+    
+        return await WaitForMediaUploadJobToFinish(createResponse.Id);
     }
 
     public async Task<CreateMediaUploadJobResponse> CreateMediaUploadJob(string name, string mimeType,
