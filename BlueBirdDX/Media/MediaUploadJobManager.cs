@@ -39,8 +39,10 @@ public class MediaUploadJobManager
     // https://help.gainapp.com/article/218-creating-content-for-threads
     // Technically, the limit is 1GB+, but let's not upload videos that size. I'll use Twitter's limit instead.
     private const int ThreadsMaximumVideoSize = TwitterMaximumVideoSize;
-
-    private const int VideoFileSizeMargin = 5242880;
+    
+    private const int OneMebibyte = 1048576;
+    
+    private const int VideoFileSizeMargin = 5 * OneMebibyte;
     private const int VideoTargetAudioBitrate = 128;
     
     private static readonly ILogger LogContext =
@@ -185,7 +187,7 @@ public class MediaUploadJobManager
         
         async Task EncodeVideoForPlatform(SocialPlatform platform, int maximumSize)
         {
-            int targetSize = maximumSize - VideoFileSizeMargin;
+            int targetSize = (maximumSize - VideoFileSizeMargin) / OneMebibyte;
 
             double targetVideoBitrate =
                 ((targetSize * 8388.608) / analysis.Duration.TotalSeconds) - VideoTargetAudioBitrate;
