@@ -20,34 +20,160 @@ public class BbTwitterClient
             account.AccessTokenSecret);
     }
 
-    public async Task<string> UploadImage(byte[] image, string? altText = null)
+    private async Task<string> UploadMedia_Initialize(string category, string mimeType, int fileSize)
     {
-        IMedia media = await _internalClient.Upload.UploadTweetImageAsync(image);
-
-        if (altText != null)
+        MediaV2InitializeRequest initializeRequest = new MediaV2InitializeRequest()
         {
-            await _internalClient.Upload.AddMediaMetadataAsync(new AddMediaMetadataParameters(media.Id)
-            {
-                AltText = altText
-            });
-        }
+            Category = category,
+            MimeType = mimeType,
+            FileSize = fileSize
+        };
+        
+        ITwitterResult result = await _internalClient.Execute.AdvanceRequestAsync(request =>
+        {
+            string json = JsonSerializer.Serialize(initializeRequest);
 
-        return media.Id.ToString()!;
+            request.Query.Url = "https://api.twitter.com/2/media/upload/initialize";
+            request.Query.HttpMethod = HttpMethod.POST;
+            request.Query.HttpContent = new StringContent(json, Encoding.UTF8, "application/json");
+        });
+
+        MediaV2InitializeResponse initializeResponse =
+            JsonSerializer.Deserialize<MediaV2InitializeResponse>(result.Response.Content)!;
+
+        return initializeResponse.InnerData.Id;
+    }
+
+    private async Task UploadMedia_Append(string mediaId, int segment, byte[] data)
+    {
+        await _internalClient.Execute.AdvanceRequestAsync(request =>
+        {
+            MultipartFormDataContent content = new MultipartFormDataContent();
+            content.Add(new StringContent(segment.ToString()), "segment_index");
+            content.Add(new ByteArrayContent(data), "media", "data.bin");
+            
+            request.Query.Url = $"https://api.twitter.com/2/media/upload/{mediaId}/append";
+            request.Query.HttpMethod = HttpMethod.POST;
+            request.Query.HttpContent = content;
+        });
     }
     
-    public async Task<string> UploadVideo(byte[] image, string? altText = null)
+    private async Task UploadMedia_Finalize(string mediaId)
     {
-        IMedia media = await _internalClient.Upload.UploadTweetVideoAsync(image);
-
-        if (altText != null)
+        await _internalClient.Execute.AdvanceRequestAsync(request =>
         {
-            await _internalClient.Upload.AddMediaMetadataAsync(new AddMediaMetadataParameters(media.Id)
+            request.Query.Url = $"https://api.twitter.com/2/media/upload/{mediaId}/finalize";
+            request.Query.HttpMethod = HttpMethod.POST;
+        });
+    }
+
+    private async Task<MediaV2Status> UploadMedia_GetStatus(string mediaId)
+    {
+        ITwitterResult result = await _internalClient.Execute.AdvanceRequestAsync(request =>
+        {
+            request.Query.Url = $"https://api.twitter.com/2/media/upload?media_id={mediaId}&command=STATUS";
+            request.Query.HttpMethod = HttpMethod.GET;
+        });
+
+        MediaV2StatusResponse statusResponse =
+            JsonSerializer.Deserialize<MediaV2StatusResponse>(result.Response.Content)!;
+
+        return statusResponse.InnerData.Status;
+    }
+
+    private async Task UploadMedia_SetMetadata(string mediaId, string altText)
+    {
+        MediaV2SetMetadataRequest metadataRequest = new MediaV2SetMetadataRequest()
+        {
+            MediaId = mediaId,
+            Metadata = new MediaV2SetMetadataRequest.MediaV2Metadata()
             {
-                AltText = altText
-            });
+                AltText = new MediaV2SetMetadataRequest.MediaV2Metadata.MediaV2MetadataAltText()
+                {
+                    Text = altText
+                }
+            }
+        };
+        
+        await _internalClient.Execute.AdvanceRequestAsync(request =>
+        {
+            string json = JsonSerializer.Serialize(metadataRequest);
+
+            request.Query.Url = "https://api.twitter.com/2/media/metadata";
+            request.Query.HttpMethod = HttpMethod.POST;
+            request.Query.HttpContent = new StringContent(json, Encoding.UTF8, "application/json");
+        });
+    }
+
+    private async Task<string> UploadMedia(string category, string mimeType, byte[] data, string? altText = null)
+    {
+        string mediaId = await UploadMedia_Initialize(category, mimeType, data.Length);
+        
+        using Stream memoryStream = new MemoryStream(data);
+
+        const int bufSize = 1048576 * 4; // 4 MiB (the maximum chunk size is 5 MiB, but we're leaving a margin)
+        byte[] buf = new byte[bufSize];
+        
+        int readLength = 0;
+        
+        int segment = 0;
+        
+        while ((readLength = memoryStream.Read(buf)) > 0)
+        {
+            byte[] segmentData;
+
+            if (readLength == bufSize)
+            {
+                segmentData = buf;
+            }
+            else
+            {
+                segmentData = new byte[readLength];
+                Array.Copy(buf, segmentData, readLength);
+            }
+            
+            await UploadMedia_Append(mediaId, segment, segmentData);
+            
+            segment++;
         }
 
-        return media.Id.ToString()!;
+        await UploadMedia_Finalize(mediaId);
+
+        if (category.Contains("video"))
+        {
+            string state;
+
+            do
+            {
+                MediaV2Status status = await UploadMedia_GetStatus(mediaId);
+
+                if (status.State == "failed")
+                {
+                    throw new Exception("Media upload failed");
+                }
+            
+                state = status.State;
+
+                await Task.Delay(TimeSpan.FromSeconds(status.CheckAfter));
+            } while (state != "succeeded");
+        }
+        
+        if (!string.IsNullOrWhiteSpace(altText))
+        {
+            await UploadMedia_SetMetadata(mediaId, altText);
+        }
+
+        return mediaId;
+    }
+
+    public async Task<string> UploadImage(byte[] image, string mimeType, string? altText = null)
+    {
+        return await UploadMedia("tweet_image", mimeType, image, altText);
+    }
+    
+    public async Task<string> UploadVideo(byte[] image, string mimeType, string? altText = null)
+    {
+        return await UploadMedia("amplify_video", mimeType, image, altText);
     }
     
     public async Task<string> Tweet(string text, string? quotedTweetId = null, string? replyToTweetId = null, string[]? mediaIds = null)

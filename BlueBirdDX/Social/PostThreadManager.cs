@@ -297,7 +297,7 @@ public class PostThreadManager
                 else
                 {
                     string quoteMediaId =
-                        await client.UploadImage(quotedPost.ImageData, DifferentPlatformQuoteImageAltText);
+                        await client.UploadImage(quotedPost.ImageData, "image/png", DifferentPlatformQuoteImageAltText);
                     
                     uploadedMediaIds.Add(quoteMediaId);
                     
@@ -321,18 +321,19 @@ public class PostThreadManager
 
                     await _retryResiliencePipeline.ExecuteAsync(async (_) =>
                     {
+                        string mediaMimeType = attachmentCache.GetMediaMimeType(mediaId, SocialPlatform.Twitter);
                         byte[] mediaData = attachmentCache.GetMediaData(mediaId, SocialPlatform.Twitter);
                         string? mediaAltText = altText.Length > 0 ? altText : null;
 
                         string uploadedMediaId;
 
-                        if (attachmentCache.GetMediaMimeType(mediaId, SocialPlatform.Twitter).StartsWith("image/"))
+                        if (mediaMimeType.StartsWith("image/"))
                         {
-                            uploadedMediaId = await client.UploadImage(mediaData, mediaAltText);
+                            uploadedMediaId = await client.UploadImage(mediaData, mediaMimeType, mediaAltText);
                         }
                         else
                         {
-                            uploadedMediaId = await client.UploadVideo(mediaData, mediaAltText);
+                            uploadedMediaId = await client.UploadVideo(mediaData, mediaMimeType, mediaAltText);
                         }
 
                         uploadedMediaIds.Add(uploadedMediaId);
