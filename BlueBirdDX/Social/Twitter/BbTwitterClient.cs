@@ -89,8 +89,8 @@ public class BbTwitterClient
             request.Query.HttpContent = new StringContent(json, Encoding.UTF8, "application/json");
         });
 
-        TweetV2Reply tweetReply = JsonSerializer.Deserialize<TweetV2Reply>(result.Response.Content)!;
+        TweetV2Response tweetResponse = JsonSerializer.Deserialize<TweetV2Response>(result.Response.Content)!;
 
-        return tweetReply.InnerData.Id;
+        return tweetResponse.InnerData.Id;
     }
 }

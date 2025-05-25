@@ -2,9 +2,9 @@ using System.Text.Json.Serialization;
 
 namespace BlueBirdDX.Social.Twitter;
 
-public class TweetV2Reply
+public class TweetV2Response
 {
-    public class TweetV2ReplyInner
+    public class TweetV2ResponseInner
     {
         [JsonPropertyName("id")]
         public string Id
@@ -22,7 +22,7 @@ public class TweetV2Reply
     }
 
     [JsonPropertyName("data")]
-    public TweetV2ReplyInner InnerData
+    public TweetV2ResponseInner InnerData
     {
         get;
         set;
