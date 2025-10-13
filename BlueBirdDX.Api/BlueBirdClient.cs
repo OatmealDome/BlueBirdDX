@@ -80,10 +80,28 @@ public sealed class BlueBirdClient
         return await SendRequestInternal(requestMessage);
     }
     
-    public async Task EnqueuePostThread(PostThreadApi apiThread)
+    public async Task CreateDraftPostThread(PostThreadApi apiThread)
+    {
+        apiThread.State = 0;
+        
+        await CreatePostThread(apiThread);
+    }
+
+    public async Task CreateEnqueuedPostThread(PostThreadApi apiThread)
     {
         apiThread.State = 1;
         
+        await CreatePostThread(apiThread);
+    }
+    
+    [Obsolete("Use CreateEnqueuedPostThread(thread) instead.")]
+    public async Task EnqueuePostThread(PostThreadApi apiThread)
+    {
+        await CreateEnqueuedPostThread(apiThread);
+    }
+
+    private async Task CreatePostThread(PostThreadApi apiThread)
+    {
         string json = JsonSerializer.Serialize(apiThread);
 
         await SendRequestInternal(HttpMethod.Post, "/api/v1/thread",
