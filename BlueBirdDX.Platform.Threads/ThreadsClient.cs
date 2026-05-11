@@ -132,8 +132,8 @@ public class ThreadsClient
     // Authentication
     //
 
-    public string Auth_GetUserOAuthAuthorizationUrl(string redirectUri, ThreadsPermission permissions,
-        string? state = null)
+    public static string Auth_GetUserOAuthAuthorizationUrl(ulong clientId, string redirectUri,
+        ThreadsPermission permissions, string? state = null)
     {
         if ((permissions & ThreadsPermission.Basic) == 0)
         {
@@ -191,7 +191,7 @@ public class ThreadsClient
         
         Dictionary<string, string> parameters = new Dictionary<string, string>();
         
-        parameters.Add("client_id", _clientId.ToString());
+        parameters.Add("client_id", clientId.ToString());
         parameters.Add("redirect_uri", redirectUri);
         parameters.Add("response_type", "code");
         parameters.Add("scope", string.Join(',', scopeStrings));
