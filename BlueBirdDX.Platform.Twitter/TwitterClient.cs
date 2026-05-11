@@ -149,6 +149,25 @@ public class TwitterClient
         return Login(urlParameters);
     }
 
+    public async Task Logout()
+    {
+        if (AccessToken == null)
+        {
+            throw new TwitterException("Can't log out while not logged in");
+        }
+
+        Dictionary<string, string> urlParameters = new Dictionary<string, string>()
+        {
+            { "token", RefreshToken! },
+            { "token_type_hint", "access_token" }, // optional according to OAuth spec but required by Twitter
+        };
+
+        using HttpResponseMessage responseMessage = await SendRequestToOAuth2Endpoint("/oauth2/revoke", urlParameters);
+
+        AccessToken = null;
+        AccessTokenExpiry = null;
+    }
+
     private async Task<string> UploadMedia_Initialize(string category, string mimeType, int fileSize)
     {
         MediaV2InitializeRequest initializeRequest = new MediaV2InitializeRequest()
