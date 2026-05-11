@@ -18,6 +18,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OatmealDome.Slab.Web", "Sla
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlueBirdDX.Platform.Threads", "BlueBirdDX.Platform.Threads\BlueBirdDX.Platform.Threads.csproj", "{B1766288-56DA-401D-B703-7170C68BFC9F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlueBirdDX.Platform.Twitter", "BlueBirdDX.Platform.Twitter\BlueBirdDX.Platform.Twitter.csproj", "{CC27F75B-5246-4F50-B18C-8B05C4AB0511}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -60,5 +62,9 @@ Global
 		{B1766288-56DA-401D-B703-7170C68BFC9F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B1766288-56DA-401D-B703-7170C68BFC9F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B1766288-56DA-401D-B703-7170C68BFC9F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CC27F75B-5246-4F50-B18C-8B05C4AB0511}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CC27F75B-5246-4F50-B18C-8B05C4AB0511}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CC27F75B-5246-4F50-B18C-8B05C4AB0511}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CC27F75B-5246-4F50-B18C-8B05C4AB0511}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

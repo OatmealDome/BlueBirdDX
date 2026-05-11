@@ -5,7 +5,7 @@ using BlueBirdDX.Common.Social;
 using BlueBirdDX.Common.Util;
 using BlueBirdDX.Common.Util.TextWrapper;
 using BlueBirdDX.Database;
-using BlueBirdDX.Social.Twitter;
+using BlueBirdDX.Platform.Twitter;
 using Mastonet;
 using Mastonet.Entities;
 using Microsoft.Extensions.Logging;
@@ -265,7 +265,8 @@ public class PostThreadManager
     private async Task PostToTwitter(PostThread postThread, PostThread? parentThread, TwitterAccount account,
         AttachmentCache attachmentCache)
     {
-        BbTwitterClient client = new BbTwitterClient(account);
+        BbTwitterClient client = new BbTwitterClient(account.ConsumerKey, account.ConsumerSecret, account.AccessToken,
+            account.AccessTokenSecret);
 
         string? previousId = parentThread?.Items.Last().TwitterId;
 

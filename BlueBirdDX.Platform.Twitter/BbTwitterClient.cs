@@ -1,23 +1,19 @@
 using System.Text;
 using System.Text.Json;
-using BlueBirdDX.Common.Account;
 using Tweetinvi;
 using Tweetinvi.Core.Web;
-using Tweetinvi.Models;
-using Tweetinvi.Parameters;
 using HttpMethod = Tweetinvi.Models.HttpMethod;
 
-namespace BlueBirdDX.Social.Twitter;
+namespace BlueBirdDX.Platform.Twitter;
 
 public class BbTwitterClient
 {
     // Optimally, we wouldn't be using Tweetinvi, but the code works and I don't want to change it.
     private readonly TwitterClient _internalClient;
 
-    public BbTwitterClient(TwitterAccount account)
+    public BbTwitterClient(string consumerKey, string consumerSecret, string accessToken, string accessTokenSecret)
     {
-        _internalClient = new TwitterClient(account.ConsumerKey, account.ConsumerSecret, account.AccessToken,
-            account.AccessTokenSecret);
+        _internalClient = new TwitterClient(consumerKey, consumerSecret, accessToken, accessTokenSecret);
     }
 
     private async Task<string> UploadMedia_Initialize(string category, string mimeType, int fileSize)

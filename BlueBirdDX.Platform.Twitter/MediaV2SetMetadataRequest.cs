@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace BlueBirdDX.Social.Twitter;
+namespace BlueBirdDX.Platform.Twitter;
 
 public class MediaV2SetMetadataRequest
 {
