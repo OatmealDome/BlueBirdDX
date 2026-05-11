@@ -75,7 +75,7 @@ public class TwitterClient
     }
 
     private async Task<HttpResponseMessage> SendRequestToNormalEndpoint(HttpMethod method, string endpoint,
-        HttpContent content)
+        HttpContent? content = null)
     {
         if (AccessToken == null)
         {
