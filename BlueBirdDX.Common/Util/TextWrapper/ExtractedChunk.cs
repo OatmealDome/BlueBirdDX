@@ -1,22 +1,20 @@
+using System.Text.Json.Serialization;
+
 namespace BlueBirdDX.Common.Util.TextWrapper;
 
 public class ExtractedChunk
 {
-    public string Data
+    [JsonPropertyName("type")]
+    public ExtractedChunkType ChunkType
     {
         get;
         set;
     }
 
-    public int Start
+    [JsonPropertyName("value")]
+    public string Value
     {
         get;
         set;
-    }
-
-    public int End
-    {
-        get;
-        set;
-    }
+    } = string.Empty;
 }

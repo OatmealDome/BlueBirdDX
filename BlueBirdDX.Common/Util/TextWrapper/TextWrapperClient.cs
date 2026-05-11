@@ -7,40 +7,6 @@ namespace BlueBirdDX.Common.Util.TextWrapper;
 
 public class TextWrapperClient
 {
-    class UrlEntry
-    {
-        [JsonPropertyName("url")]
-        public string Url
-        {
-            get;
-            set;
-        }
-
-        [JsonPropertyName("indices")]
-        public List<int> Indices
-        {
-            get;
-            set;
-        }
-    }
-    
-    class HashtagEntry
-    {
-        [JsonPropertyName("hashtag")]
-        public string Hashtag
-        {
-            get;
-            set;
-        }
-
-        [JsonPropertyName("indices")]
-        public List<int> Indices
-        {
-            get;
-            set;
-        }
-    }
-
     class CharacterCountResponse
     {
         [JsonPropertyName("length")]
@@ -138,31 +104,10 @@ public class TextWrapperClient
         return countResponse.Length;
     }
 
-    public async Task<List<ExtractedChunk>> ExtractUrls(string text)
+    public async Task<List<ExtractedChunk>> Tokenize(string text)
     {
-        HttpResponseMessage responseMessage = await SendRequestInternal("/api/extract-urls", text);
-
-        List<UrlEntry> entries = (await responseMessage.Content.ReadFromJsonAsync<List<UrlEntry>>())!;
-
-        return entries.Select(e => new ExtractedChunk()
-        {
-            Data = e.Url,
-            Start = e.Indices[0],
-            End = e.Indices[1]
-        }).ToList();
-    }
-    
-    public async Task<List<ExtractedChunk>> ExtractHashtags(string text)
-    {
-        HttpResponseMessage responseMessage = await SendRequestInternal("/api/extract-hashtags", text);
-
-        List<HashtagEntry> entries = (await responseMessage.Content.ReadFromJsonAsync<List<HashtagEntry>>())!;
-
-        return entries.Select(e => new ExtractedChunk()
-        {
-            Data = e.Hashtag,
-            Start = e.Indices[0],
-            End = e.Indices[1]
-        }).ToList();
+        HttpResponseMessage responseMessage = await SendRequestInternal("/api/tokenize", text);
+        
+        return (await responseMessage.Content.ReadFromJsonAsync<List<ExtractedChunk>>())!;
     }
 }
