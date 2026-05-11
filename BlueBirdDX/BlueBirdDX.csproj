@@ -19,6 +19,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\BlueBirdDX.Common\BlueBirdDX.Common.csproj" />
+      <ProjectReference Include="..\BlueBirdDX.Platform.Threads\BlueBirdDX.Platform.Threads.csproj" />
       <ProjectReference Include="..\Slab\OatmealDome.Slab.Mongo\OatmealDome.Slab.Mongo.csproj" />
       <ProjectReference Include="..\Slab\OatmealDome.Slab.S3\OatmealDome.Slab.S3.csproj" />
       <ProjectReference Include="..\Slab\OatmealDome.Slab\OatmealDome.Slab.csproj" />
@@ -28,7 +29,6 @@
       <PackageReference Include="FFMpegCore" Version="5.1.0" />
       <PackageReference Include="Mastonet" Version="3.1.1" />
       <PackageReference Include="NATS.Net" Version="2.5.5" />
-      <PackageReference Include="OatmealDome.Unravel" Version="1.2.0" />
       <PackageReference Include="Polly" Version="8.4.2" />
       <PackageReference Include="Selenium.WebDriver" Version="4.19.0" />
       <PackageReference Include="SixLabors.ImageSharp" Version="3.1.4" />
