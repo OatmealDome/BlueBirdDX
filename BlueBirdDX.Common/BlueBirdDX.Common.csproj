@@ -12,7 +12,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="OatmealDome.Airship" Version="2.4.0" />
+      <PackageReference Include="idunno.Bluesky" Version="1.8.0" />
     </ItemGroup>
 
 </Project>

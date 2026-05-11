@@ -1,9 +1,12 @@
 using System.Diagnostics;
 using BlueBirdDX.Common.Post;
 using BlueBirdDX.Common.Util;
+using idunno.AtProto;
+using idunno.Bluesky;
+using idunno.Bluesky.Actor;
+using idunno.Bluesky.Feed;
 using MongoDB.Driver;
-using OatmealDome.Airship.ATProtocol.Repo;
-using OatmealDome.Airship.Bluesky;
+using PostThread = BlueBirdDX.Common.Post.PostThread;
 
 namespace BlueBirdDX.Common.Social;
 
@@ -84,10 +87,20 @@ public class QuotedPost
             string repo = splitPath[^3];
             string key = splitPath[^1];
 
-            BlueskyClient client = new BlueskyClient();
-            ATReturnedRecord<OatmealDome.Airship.Bluesky.Feed.Post> returnedRecord = await client.Post_Get(repo, key);
+            BlueskyAgent agent = new BlueskyAgent();
 
-            quotedPost.BlueskyRef = new BlueskyRef(returnedRecord.Ref.Uri, returnedRecord.Ref.Cid);
+            Handle handle = Handle.FromString(repo);
+
+            AtProtoHttpResult<ProfileViewDetailed> profileView = await agent.GetProfile(handle);
+            profileView.EnsureSucceeded();
+
+            // "at://{repo}/app.bsky.feed.post/{key}" should be a valid URI, but this doesn't work for some reason.
+            AtUri atUri = AtUri.FromString($"at://{profileView.Result.Did}/app.bsky.feed.post/{key}");
+
+            AtProtoHttpResult<PostView> view = await agent.GetPost(atUri);
+            view.EnsureSucceeded();
+
+            quotedPost.BlueskyRef = new BlueskyRef(view.Result.Uri.ToString(), view.Result.Cid.ToString());
 
             PostThreadItem? postThreadItem = postThreadCollection.AsQueryable().SelectMany(t => t.Items)
                 .FirstOrDefault(i => i.BlueskyThisRef != null && i.BlueskyThisRef.Uri == quotedPost.BlueskyRef.Uri);
