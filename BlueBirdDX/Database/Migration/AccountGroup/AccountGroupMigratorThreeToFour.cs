@@ -11,7 +11,7 @@ public class AccountGroupMigratorThreeToFour : SlabMongoDocumentMigrator<Common.
     public override Task MigrateDocument(BsonDocument document)
     {
         // Save old credentials for archival.
-        document.Set("Threads", document["ThreadsLegacy"]);
+        document.Set("ThreadsLegacy", document["Threads"]);
 
         document.Set("Threads", BsonNull.Value);
 
