@@ -176,23 +176,42 @@ public class TwitterClient
             MimeType = mimeType,
             FileSize = fileSize
         };
-        
-        throw new NotImplementedException();
+
+        using HttpResponseMessage responseMessage = await SendRequestToNormalEndpoint(HttpMethod.Post,
+            "/media/upload/initialize",
+            new StringContent(JsonSerializer.Serialize(initializeRequest), Encoding.UTF8, "application/json"));
+
+        MediaV2InitializeResponse initializeResponse =
+            JsonSerializer.Deserialize<MediaV2InitializeResponse>(await responseMessage.Content.ReadAsStringAsync())!;
+
+        return initializeResponse.InnerData.Id;
     }
 
     private async Task UploadMedia_Append(string mediaId, int segment, byte[] data)
     {
-        throw new NotImplementedException();
+        MultipartFormDataContent content = new MultipartFormDataContent();
+        content.Add(new StringContent(segment.ToString()), "segment_index");
+        content.Add(new ByteArrayContent(data), "media", "data.bin");
+
+        using HttpResponseMessage responseMessage =
+            await SendRequestToNormalEndpoint(HttpMethod.Post, $"/media/upload/{mediaId}/append", content);
     }
     
     private async Task UploadMedia_Finalize(string mediaId)
     {
-        throw new NotImplementedException();
+        using HttpResponseMessage responseMessage =
+            await SendRequestToNormalEndpoint(HttpMethod.Post, $"/media/upload/{mediaId}/finalize");
     }
 
     private async Task<MediaV2Status> UploadMedia_GetStatus(string mediaId)
     {
-        throw new NotImplementedException();
+        using HttpResponseMessage responseMessage =
+            await SendRequestToNormalEndpoint(HttpMethod.Get, $"/media/upload?media_id={mediaId}&command=STATUS");
+
+        MediaV2StatusResponse statusResponse =
+            JsonSerializer.Deserialize<MediaV2StatusResponse>(await responseMessage.Content.ReadAsStringAsync())!;
+
+        return statusResponse.InnerData.Status;
     }
 
     private async Task UploadMedia_SetMetadata(string mediaId, string altText)
@@ -208,8 +227,10 @@ public class TwitterClient
                 }
             }
         };
-        
-        throw new NotImplementedException();
+
+        using HttpResponseMessage responseMessage = await SendRequestToNormalEndpoint(HttpMethod.Post,
+            "/media/metadata",
+            new StringContent(JsonSerializer.Serialize(metadataRequest), Encoding.UTF8, "application/json"));
     }
 
     private async Task<string> UploadMedia(string category, string mimeType, byte[] data, string? altText = null)
