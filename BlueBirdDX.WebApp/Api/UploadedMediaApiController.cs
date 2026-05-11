@@ -38,7 +38,7 @@ public class UploadedMediaApiController : ControllerBase
     {
         IEnumerable<UploadedMedia> media = _uploadedMediaCollection.AsQueryable();
         
-        return Ok(media.Select(m => UploadedMediaApiExtensions.CreateApiFromCommon(m)));
+        return Ok(media.Select(m => UploadedMediaApiExtensions.CreateApiFromCommon(m)).Reverse());
     }
 
     private MediaUploadJob CreateMediaUploadJob(string name, string mimeType, string altText)
