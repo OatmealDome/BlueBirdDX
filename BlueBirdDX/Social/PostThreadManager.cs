@@ -40,6 +40,7 @@ public class PostThreadManager
 
     private readonly ILogger<PostThreadManager> _logger;
     private readonly PostThreadManagerConfiguration _settings;
+    private readonly SocialAppConfiguration _socialSettings;
     private readonly SlabMongoService _mongoService;
     private readonly SlabS3Service _s3Service;
     private readonly IMongoCollection<PostThread> _postThreadCollection;
@@ -50,10 +51,12 @@ public class PostThreadManager
     private readonly ResiliencePipeline _threadsTimeoutResiliencePipeline;
 
     public PostThreadManager(ILogger<PostThreadManager> logger, IOptions<PostThreadManagerConfiguration> settings,
-        SlabMongoService mongoService, SlabS3Service s3Service, AccountGroupManager accountGroupManager)
+        IOptions<SocialAppConfiguration> socialSettings, SlabMongoService mongoService, SlabS3Service s3Service,
+        AccountGroupManager accountGroupManager)
     {
         _logger = logger;
         _settings = settings.Value;
+        _socialSettings = socialSettings.Value;
         _mongoService = mongoService;
         _s3Service = s3Service;
         _postThreadCollection = mongoService.GetCollection<PostThread>("threads");
@@ -182,8 +185,9 @@ public class PostThreadManager
             parentThread = _postThreadCollection.AsQueryable().FirstOrDefault(t => t._id == postThread.ParentThread)!;
         }
 
-        if (postThread.PostToTwitter && group.Twitter != null && !string.IsNullOrEmpty(_settings.TwitterClientId) &&
-            !string.IsNullOrEmpty(_settings.TwitterClientSecret))
+        if (postThread.PostToTwitter && group.Twitter != null &&
+            !string.IsNullOrEmpty(_socialSettings.TwitterClientId) &&
+            !string.IsNullOrEmpty(_socialSettings.TwitterClientSecret))
         {
             _logger.LogInformation("Posting thread {id} to Twitter", postThread._id.ToString());
             
@@ -264,7 +268,8 @@ public class PostThreadManager
     private async Task PostToTwitter(PostThread postThread, PostThread? parentThread, AccountGroup group,
         AttachmentCache attachmentCache)
     {
-        TwitterClient client = new TwitterClient(_settings.TwitterClientId!, _settings.TwitterClientSecret!);
+        TwitterClient client =
+            new TwitterClient(_socialSettings.TwitterClientId!, _socialSettings.TwitterClientSecret!);
         await client.Login(group.Twitter!.RefreshToken);
 
         try

@@ -40,6 +40,8 @@ public class BbCoreApplication : SlabConsoleApplication
         appBuilder.RegisterConfiguration<MediaUploadJobManagerConfiguration>("MediaUploadJobManager");
         appBuilder.RegisterHostedService<MediaUploadJobManager>();
         
+        appBuilder.RegisterConfiguration<SocialAppConfiguration>("SocialApp");
+        
         appBuilder.RegisterConfiguration<PostThreadManagerConfiguration>("PostThreadManager");
         appBuilder.RegisterSingleton<PostThreadManager>();
         
