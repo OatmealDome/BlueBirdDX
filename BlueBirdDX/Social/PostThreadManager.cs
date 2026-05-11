@@ -191,7 +191,7 @@ public class PostThreadManager
             
             try
             {
-                await PostToTwitter(postThread, parentThread, group.Twitter, attachmentCache);
+                await PostToTwitter(postThread, parentThread, group, attachmentCache);
             }
             catch (Exception e)
             {
@@ -263,86 +263,102 @@ public class PostThreadManager
         await UpdateThreadState(postThread, outState, errorBuilder.ToString());
     }
 
-    private async Task PostToTwitter(PostThread postThread, PostThread? parentThread, TwitterAccount account,
+    private async Task PostToTwitter(PostThread postThread, PostThread? parentThread, AccountGroup group,
         AttachmentCache attachmentCache)
     {
         TwitterClient client = new TwitterClient(_settings.TwitterClientId!, _settings.TwitterClientSecret!);
-        await client.Login(account.RefreshToken);
+        await client.Login(group.Twitter!.RefreshToken);
 
-        string? previousId = parentThread?.Items.Last().TwitterId;
-
-        foreach (PostThreadItem item in postThread.Items)
+        try
         {
-            string text = item.Text;
-            
-            List<string> uploadedMediaIds = new List<string>();
-            
-            string? quotedTweetId = null;
-            
-            if (item.QuotedPost != null)
-            {
-                QuotedPost quotedPost = attachmentCache.GetQuotedPost(item.QuotedPost);
+            string? previousId = parentThread?.Items.Last().TwitterId;
 
-                if (quotedPost.TwitterId != null)
+            foreach (PostThreadItem item in postThread.Items)
+            {
+                string text = item.Text;
+
+                List<string> uploadedMediaIds = new List<string>();
+
+                string? quotedTweetId = null;
+
+                if (item.QuotedPost != null)
                 {
-                    quotedTweetId = quotedPost.TwitterId;
-                }
-                else
-                {
-                    string quoteMediaId = await client.UploadImage(quotedPost.ImageData!, "image/png",
-                        DifferentPlatformQuoteImageAltText);
-                    
-                    uploadedMediaIds.Add(quoteMediaId);
-                    
-                    if (text != "")
+                    QuotedPost quotedPost = attachmentCache.GetQuotedPost(item.QuotedPost);
+
+                    if (quotedPost.TwitterId != null)
                     {
-                        text += "\n\n";
+                        quotedTweetId = quotedPost.TwitterId;
                     }
-
-                    text += quotedPost.GetPrimaryPlatform().ToEmoji() + "\u00a0" +
-                            quotedPost.GetPostUrlOnPrimaryPlatform();
-                }
-            }
-            
-            string[]? twitterMediaIds = null;
-
-            if (item.AttachedMedia.Count > 0)
-            {
-                foreach (ObjectId mediaId in item.AttachedMedia)
-                {
-                    string altText = attachmentCache.GetMediaAltText(mediaId);
-
-                    await _retryResiliencePipeline.ExecuteAsync(async (_) =>
+                    else
                     {
-                        string mediaMimeType = attachmentCache.GetMediaMimeType(mediaId, SocialPlatform.Twitter);
-                        byte[] mediaData = attachmentCache.GetMediaData(mediaId, SocialPlatform.Twitter);
-                        string? mediaAltText = altText.Length > 0 ? altText : null;
+                        string quoteMediaId = await client.UploadImage(quotedPost.ImageData!, "image/png",
+                            DifferentPlatformQuoteImageAltText);
 
-                        string uploadedMediaId;
+                        uploadedMediaIds.Add(quoteMediaId);
 
-                        if (mediaMimeType.StartsWith("image/"))
+                        if (text != "")
                         {
-                            uploadedMediaId = await client.UploadImage(mediaData, mediaMimeType, mediaAltText);
-                        }
-                        else
-                        {
-                            uploadedMediaId = await client.UploadVideo(mediaData, mediaMimeType, mediaAltText);
+                            text += "\n\n";
                         }
 
-                        uploadedMediaIds.Add(uploadedMediaId);
-                    });
+                        text += quotedPost.GetPrimaryPlatform().ToEmoji() + "\u00a0" +
+                                quotedPost.GetPostUrlOnPrimaryPlatform();
+                    }
                 }
+
+                string[]? twitterMediaIds = null;
+
+                if (item.AttachedMedia.Count > 0)
+                {
+                    foreach (ObjectId mediaId in item.AttachedMedia)
+                    {
+                        string altText = attachmentCache.GetMediaAltText(mediaId);
+
+                        await _retryResiliencePipeline.ExecuteAsync(async (_) =>
+                        {
+                            string mediaMimeType = attachmentCache.GetMediaMimeType(mediaId, SocialPlatform.Twitter);
+                            byte[] mediaData = attachmentCache.GetMediaData(mediaId, SocialPlatform.Twitter);
+                            string? mediaAltText = altText.Length > 0 ? altText : null;
+
+                            string uploadedMediaId;
+
+                            if (mediaMimeType.StartsWith("image/"))
+                            {
+                                uploadedMediaId = await client.UploadImage(mediaData, mediaMimeType, mediaAltText);
+                            }
+                            else
+                            {
+                                uploadedMediaId = await client.UploadVideo(mediaData, mediaMimeType, mediaAltText);
+                            }
+
+                            uploadedMediaIds.Add(uploadedMediaId);
+                        });
+                    }
+                }
+
+                twitterMediaIds = uploadedMediaIds.Count > 0 ? uploadedMediaIds.ToArray() : null;
+
+                await _retryResiliencePipeline.ExecuteAsync(async (token) =>
+                {
+                    previousId = await client.Tweet(text, quotedTweetId: quotedTweetId, replyToTweetId: previousId,
+                        mediaIds: twitterMediaIds);
+                });
+
+                item.TwitterId = previousId;
+            }
+        }
+        finally
+        {
+            try
+            {
+                await client.Logout();
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "An error occurred while logging out of Twitter");
             }
             
-            twitterMediaIds = uploadedMediaIds.Count > 0 ? uploadedMediaIds.ToArray() : null;
-
-            await _retryResiliencePipeline.ExecuteAsync(async (token) =>
-            {
-                previousId = await client.Tweet(text, quotedTweetId: quotedTweetId, replyToTweetId: previousId,
-                    mediaIds: twitterMediaIds);
-            });
-
-            item.TwitterId = previousId;
+            await _accountGroupManager.UpdateTwitterRefreshTokenForGroup(group, client.RefreshToken!);
         }
     }
 
