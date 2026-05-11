@@ -1,19 +1,10 @@
-using System.Text;
-using System.Text.Json;
-using Tweetinvi;
-using Tweetinvi.Core.Web;
-using HttpMethod = Tweetinvi.Models.HttpMethod;
-
 namespace BlueBirdDX.Platform.Twitter;
 
-public class BbTwitterClient
+public class TwitterClient
 {
-    // Optimally, we wouldn't be using Tweetinvi, but the code works and I don't want to change it.
-    private readonly TwitterClient _internalClient;
-
-    public BbTwitterClient(string consumerKey, string consumerSecret, string accessToken, string accessTokenSecret)
+    public TwitterClient(string consumerKey, string consumerSecret, string accessToken, string accessTokenSecret)
     {
-        _internalClient = new TwitterClient(consumerKey, consumerSecret, accessToken, accessTokenSecret);
+        //
     }
 
     private async Task<string> UploadMedia_Initialize(string category, string mimeType, int fileSize)
@@ -25,56 +16,22 @@ public class BbTwitterClient
             FileSize = fileSize
         };
         
-        ITwitterResult result = await _internalClient.Execute.AdvanceRequestAsync(request =>
-        {
-            string json = JsonSerializer.Serialize(initializeRequest);
-
-            request.Query.Url = "https://api.twitter.com/2/media/upload/initialize";
-            request.Query.HttpMethod = HttpMethod.POST;
-            request.Query.HttpContent = new StringContent(json, Encoding.UTF8, "application/json");
-        });
-
-        MediaV2InitializeResponse initializeResponse =
-            JsonSerializer.Deserialize<MediaV2InitializeResponse>(result.Response.Content)!;
-
-        return initializeResponse.InnerData.Id;
+        throw new NotImplementedException();
     }
 
     private async Task UploadMedia_Append(string mediaId, int segment, byte[] data)
     {
-        await _internalClient.Execute.AdvanceRequestAsync(request =>
-        {
-            MultipartFormDataContent content = new MultipartFormDataContent();
-            content.Add(new StringContent(segment.ToString()), "segment_index");
-            content.Add(new ByteArrayContent(data), "media", "data.bin");
-            
-            request.Query.Url = $"https://api.twitter.com/2/media/upload/{mediaId}/append";
-            request.Query.HttpMethod = HttpMethod.POST;
-            request.Query.HttpContent = content;
-        });
+        throw new NotImplementedException();
     }
     
     private async Task UploadMedia_Finalize(string mediaId)
     {
-        await _internalClient.Execute.AdvanceRequestAsync(request =>
-        {
-            request.Query.Url = $"https://api.twitter.com/2/media/upload/{mediaId}/finalize";
-            request.Query.HttpMethod = HttpMethod.POST;
-        });
+        throw new NotImplementedException();
     }
 
     private async Task<MediaV2Status> UploadMedia_GetStatus(string mediaId)
     {
-        ITwitterResult result = await _internalClient.Execute.AdvanceRequestAsync(request =>
-        {
-            request.Query.Url = $"https://api.twitter.com/2/media/upload?media_id={mediaId}&command=STATUS";
-            request.Query.HttpMethod = HttpMethod.GET;
-        });
-
-        MediaV2StatusResponse statusResponse =
-            JsonSerializer.Deserialize<MediaV2StatusResponse>(result.Response.Content)!;
-
-        return statusResponse.InnerData.Status;
+        throw new NotImplementedException();
     }
 
     private async Task UploadMedia_SetMetadata(string mediaId, string altText)
@@ -91,14 +48,7 @@ public class BbTwitterClient
             }
         };
         
-        await _internalClient.Execute.AdvanceRequestAsync(request =>
-        {
-            string json = JsonSerializer.Serialize(metadataRequest);
-
-            request.Query.Url = "https://api.twitter.com/2/media/metadata";
-            request.Query.HttpMethod = HttpMethod.POST;
-            request.Query.HttpContent = new StringContent(json, Encoding.UTF8, "application/json");
-        });
+        throw new NotImplementedException();
     }
 
     private async Task<string> UploadMedia(string category, string mimeType, byte[] data, string? altText = null)
@@ -202,17 +152,6 @@ public class BbTwitterClient
             QuotedTweetId = quotedTweetId
         };
 
-        ITwitterResult result = await _internalClient.Execute.AdvanceRequestAsync(request =>
-        {
-            string json = JsonSerializer.Serialize(tweetRequest);
-
-            request.Query.Url = "https://api.twitter.com/2/tweets";
-            request.Query.HttpMethod = HttpMethod.POST;
-            request.Query.HttpContent = new StringContent(json, Encoding.UTF8, "application/json");
-        });
-
-        TweetV2Response tweetResponse = JsonSerializer.Deserialize<TweetV2Response>(result.Response.Content)!;
-
-        return tweetResponse.InnerData.Id;
+        throw new NotImplementedException();
     }
 }
