@@ -88,7 +88,16 @@
     <script>
         function repopulateTable(response) {
             for (const thread of response) {
-                $("tbody").append("<tr><td>" + thread.name + "</td><td>" + thread.state + "</td><td><a href=\"/thread/" + thread.id + "/\">edit</a>, <a href=\"/thread/new?baseThreadId=" + thread.id + "\">clone</a></td></tr>");
+                let row = "<tr><td>" + thread.name + "</td><td>" + thread.state + "</td><td>";
+                let actions = []
+                
+                if (thread.state === "Draft" || thread.state === "Enqueued") {
+                    actions.push("<a href=\"/thread/" + thread.id + "/\">edit</a>");
+                }
+
+                actions.push("<a href=\"/thread/new?baseThreadId=" + thread.id + "\">clone</a>");
+
+                $("tbody").append("<tr><td>" + thread.name + "</td><td>" + thread.state + "</td><td>" + actions.join(", ") + "</td></tr>");
             }
         }
 
