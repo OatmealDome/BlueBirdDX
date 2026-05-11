@@ -371,182 +371,194 @@ public class PostThreadManager
         BlueskyAgent agent = new BlueskyAgent();
         await agent.Login(account.Identifier, account.Password);
 
-        PostThreadItem? lastParentItem = parentThread?.Items.Last();
-
-        StrongReference? BbCommonRefToStrongReference(BlueskyRef? commonRef)
+        try
         {
-            return commonRef != null ? new StrongReference(commonRef.Uri, commonRef.Cid) : null;
-        }
-        
-        StrongReference? rootPost = BbCommonRefToStrongReference(lastParentItem?.BlueskyRootRef);
-        StrongReference? previousPost = BbCommonRefToStrongReference(lastParentItem?.BlueskyThisRef);
-        
-        foreach (PostThreadItem item in postThread.Items)
-        {
-            string text = item.Text.TrimEnd();
+            PostThreadItem? lastParentItem = parentThread?.Items.Last();
 
-            PostBuilder postBuilder = new PostBuilder();
+            StrongReference? BbCommonRefToStrongReference(BlueskyRef? commonRef)
+            {
+                return commonRef != null ? new StrongReference(commonRef.Uri, commonRef.Cid) : null;
+            }
             
-            List<ExtractedChunk> chunks = await _textWrapperClient.Tokenize(text);
-            foreach (ExtractedChunk chunk in chunks)
+            StrongReference? rootPost = BbCommonRefToStrongReference(lastParentItem?.BlueskyRootRef);
+            StrongReference? previousPost = BbCommonRefToStrongReference(lastParentItem?.BlueskyThisRef);
+            
+            foreach (PostThreadItem item in postThread.Items)
             {
-                if (chunk.ChunkType == ExtractedChunkType.Url)
-                {
-                    string fixedUrl = chunk.Value;
+                string text = item.Text.TrimEnd();
 
-                    if (!fixedUrl.StartsWith("http"))
-                    {
-                        fixedUrl = "https://" + fixedUrl;
-                    }
-
-                    Uri uri = new Uri(fixedUrl);
-        
-                    string replacement = $"🔗\u00a0{uri.Host}";
-                    postBuilder.Append(new Link(uri, replacement));
-                }
-                else if (chunk.ChunkType == ExtractedChunkType.Hashtag)
-                {
-                    postBuilder.Append(new HashTag(chunk.Value.Substring(1)));
-                }
-                else
-                {
-                    postBuilder.Append(chunk.Value);
-                }
-            }
-
-            if (item.QuotedPost != null)
-            {
-                QuotedPost quotedPost = attachmentCache.GetQuotedPost(item.QuotedPost);
+                PostBuilder postBuilder = new PostBuilder();
                 
-                if (quotedPost.BlueskyRef != null)
+                List<ExtractedChunk> chunks = await _textWrapperClient.Tokenize(text);
+                foreach (ExtractedChunk chunk in chunks)
                 {
-                    postBuilder.QuotePost = BbCommonRefToStrongReference(quotedPost.BlueskyRef)!;
-                }
-                else
-                {
-                    byte[] quotedPostData = quotedPost.ImageData!;
-                
-                    await _retryResiliencePipeline.ExecuteAsync(async (_) =>
+                    if (chunk.ChunkType == ExtractedChunkType.Url)
                     {
-                        AtProtoHttpResult<EmbeddedImage> atResult = await agent.UploadImage(quotedPostData, "image/png",
-                            DifferentPlatformQuoteImageAltText, null);
-                        atResult.EnsureSucceeded();
-                        
-                        postBuilder.Add(atResult.Result);
-                    });
-                
-                    if (!string.IsNullOrEmpty(postBuilder.Text))
-                    {
-                        postBuilder.Append('\n', 2);
-                    }
+                        string fixedUrl = chunk.Value;
 
-                    postBuilder.Append(new Link(quotedPost.GetPostUrlOnPrimaryPlatform(),
-                        quotedPost.GetPrimaryPlatform().ToEmoji() + "\u00a0original post"));
-                }
-            }
-
-            foreach (ObjectId mediaId in item.AttachedMedia)
-            {
-                byte[] data = attachmentCache.GetMediaData(mediaId, SocialPlatform.Bluesky);
-                string mimeType = attachmentCache.GetMediaMimeType(mediaId, SocialPlatform.Bluesky);
-                string altText = attachmentCache.GetMediaAltText(mediaId);
-                (int width, int height) aspectRatioTuple = attachmentCache.GetMediaAspectRatio(mediaId);
-                AspectRatio aspectRatio = new AspectRatio(aspectRatioTuple.width, aspectRatioTuple.height);
-
-                if (mimeType.StartsWith("image/"))
-                {
-                    if (postBuilder.HasVideo)
-                    {
-                        throw new Exception("Can't have images at the same time as videos in one post on Bluesky");
-                    }
-
-                    await _retryResiliencePipeline.ExecuteAsync(async (_) =>
-                    {
-                        AtProtoHttpResult<EmbeddedImage> atResult =
-                            await agent.UploadImage(data, mimeType, altText, aspectRatio);
-                        atResult.EnsureSucceeded();
-
-                        postBuilder.Add(atResult.Result);
-                    });
-                }
-                else
-                {
-                    if (postBuilder.HasVideo)
-                    {
-                        throw new Exception("Can't have more than one video in a post on Bluesky");
-                    }
-
-                    if (postBuilder.HasImages)
-                    {
-                        throw new Exception("Can't have images at the same time as videos in one post on Bluesky");
-                    }
-
-                    await _retryResiliencePipeline.ExecuteAsync(async (_) =>
-                    {
-                        // Based on https://bluesky.idunno.dev/docs/video.html
-
-                        AtProtoHttpResult<JobStatus> atResult = await agent.UploadVideo("video.mp4", data);
-                        atResult.EnsureSucceeded();
-
-                        while (atResult.Succeeded && (atResult.Result.State == JobState.Created ||
-                                                      atResult.Result.State == JobState.InProgress))
+                        if (!fixedUrl.StartsWith("http"))
                         {
-                            await Task.Delay(1000);
-                            atResult = await agent.GetVideoJobStatus(atResult.Result.JobId);
+                            fixedUrl = "https://" + fixedUrl;
+                        }
+
+                        Uri uri = new Uri(fixedUrl);
+            
+                        string replacement = $"🔗\u00a0{uri.Host}";
+                        postBuilder.Append(new Link(uri, replacement));
+                    }
+                    else if (chunk.ChunkType == ExtractedChunkType.Hashtag)
+                    {
+                        postBuilder.Append(new HashTag(chunk.Value.Substring(1)));
+                    }
+                    else
+                    {
+                        postBuilder.Append(chunk.Value);
+                    }
+                }
+
+                if (item.QuotedPost != null)
+                {
+                    QuotedPost quotedPost = attachmentCache.GetQuotedPost(item.QuotedPost);
+                    
+                    if (quotedPost.BlueskyRef != null)
+                    {
+                        postBuilder.QuotePost = BbCommonRefToStrongReference(quotedPost.BlueskyRef)!;
+                    }
+                    else
+                    {
+                        byte[] quotedPostData = quotedPost.ImageData!;
+                    
+                        await _retryResiliencePipeline.ExecuteAsync(async (_) =>
+                        {
+                            AtProtoHttpResult<EmbeddedImage> atResult = await agent.UploadImage(quotedPostData, "image/png",
+                                DifferentPlatformQuoteImageAltText, null);
                             atResult.EnsureSucceeded();
-                        }
-
-                        if (!atResult.Succeeded || atResult.Result.Blob is null ||
-                            atResult.Result.State != JobState.Completed)
+                            
+                            postBuilder.Add(atResult.Result);
+                        });
+                    
+                        if (!string.IsNullOrEmpty(postBuilder.Text))
                         {
-                            throw new Exception(
-                                $"Video upload failed with error {atResult.AtErrorDetail?.Error} and detail {atResult.AtErrorDetail?.Message}");
+                            postBuilder.Append('\n', 2);
                         }
 
-                        postBuilder.Add(new EmbeddedVideo(atResult.Result.Blob!, altText: altText));
-                    });
+                        postBuilder.Append(new Link(quotedPost.GetPostUrlOnPrimaryPlatform(),
+                            quotedPost.GetPrimaryPlatform().ToEmoji() + "\u00a0original post"));
+                    }
                 }
-            }
-            
-            Post blueskyPost = postBuilder.ToPost();
 
-            if (previousPost != null)
-            {
-                // HACK: idunno.Bluesky has a bug where it doesn't allow both a post to both be a quote and a reply
-                // at the same time, even though this works just fine. Hack around it by emulating the behaviour of
-                // postBuilder.InReplyTo with reflection.
-                PropertyInfo replyProperty =
-                    typeof(Post).GetProperty("Reply", BindingFlags.Public | BindingFlags.Instance)!;
-                replyProperty.SetValue(blueskyPost, new ReplyReferences(previousPost, rootPost!));
-            }
-            
-            await _retryResiliencePipeline.ExecuteAsync(async (token) =>
-            {
-                AtProtoHttpResult<CreateRecordResult> atResult = await agent.Post(blueskyPost);
-                atResult.EnsureSucceeded();
-
-                previousPost = atResult.Result.StrongReference;
-            });
-
-            if (rootPost == null)
-            {
-                rootPost = previousPost;
-            }
-
-            BlueskyRef StrongReferenceToBbCommonRef(StrongReference strongRef)
-            {
-                return new BlueskyRef()
+                foreach (ObjectId mediaId in item.AttachedMedia)
                 {
-                    Cid = strongRef.Cid.ToString(),
-                    Uri = strongRef.Uri.ToString()
-                };
+                    byte[] data = attachmentCache.GetMediaData(mediaId, SocialPlatform.Bluesky);
+                    string mimeType = attachmentCache.GetMediaMimeType(mediaId, SocialPlatform.Bluesky);
+                    string altText = attachmentCache.GetMediaAltText(mediaId);
+                    (int width, int height) aspectRatioTuple = attachmentCache.GetMediaAspectRatio(mediaId);
+                    AspectRatio aspectRatio = new AspectRatio(aspectRatioTuple.width, aspectRatioTuple.height);
+
+                    if (mimeType.StartsWith("image/"))
+                    {
+                        if (postBuilder.HasVideo)
+                        {
+                            throw new Exception("Can't have images at the same time as videos in one post on Bluesky");
+                        }
+
+                        await _retryResiliencePipeline.ExecuteAsync(async (_) =>
+                        {
+                            AtProtoHttpResult<EmbeddedImage> atResult =
+                                await agent.UploadImage(data, mimeType, altText, aspectRatio);
+                            atResult.EnsureSucceeded();
+
+                            postBuilder.Add(atResult.Result);
+                        });
+                    }
+                    else
+                    {
+                        if (postBuilder.HasVideo)
+                        {
+                            throw new Exception("Can't have more than one video in a post on Bluesky");
+                        }
+
+                        if (postBuilder.HasImages)
+                        {
+                            throw new Exception("Can't have images at the same time as videos in one post on Bluesky");
+                        }
+
+                        await _retryResiliencePipeline.ExecuteAsync(async (_) =>
+                        {
+                            // Based on https://bluesky.idunno.dev/docs/video.html
+
+                            AtProtoHttpResult<JobStatus> atResult = await agent.UploadVideo("video.mp4", data);
+                            atResult.EnsureSucceeded();
+
+                            while (atResult.Succeeded && (atResult.Result.State == JobState.Created ||
+                                                          atResult.Result.State == JobState.InProgress))
+                            {
+                                await Task.Delay(1000);
+                                atResult = await agent.GetVideoJobStatus(atResult.Result.JobId);
+                                atResult.EnsureSucceeded();
+                            }
+
+                            if (!atResult.Succeeded || atResult.Result.Blob is null ||
+                                atResult.Result.State != JobState.Completed)
+                            {
+                                throw new Exception(
+                                    $"Video upload failed with error {atResult.AtErrorDetail?.Error} and detail {atResult.AtErrorDetail?.Message}");
+                            }
+
+                            postBuilder.Add(new EmbeddedVideo(atResult.Result.Blob!, altText: altText));
+                        });
+                    }
+                }
+                
+                Post blueskyPost = postBuilder.ToPost();
+
+                if (previousPost != null)
+                {
+                    // HACK: idunno.Bluesky has a bug where it doesn't allow both a post to both be a quote and a reply
+                    // at the same time, even though this works just fine. Hack around it by emulating the behaviour of
+                    // postBuilder.InReplyTo with reflection.
+                    PropertyInfo replyProperty =
+                        typeof(Post).GetProperty("Reply", BindingFlags.Public | BindingFlags.Instance)!;
+                    replyProperty.SetValue(blueskyPost, new ReplyReferences(previousPost, rootPost!));
+                }
+                
+                await _retryResiliencePipeline.ExecuteAsync(async (token) =>
+                {
+                    AtProtoHttpResult<CreateRecordResult> atResult = await agent.Post(blueskyPost);
+                    atResult.EnsureSucceeded();
+
+                    previousPost = atResult.Result.StrongReference;
+                });
+
+                if (rootPost == null)
+                {
+                    rootPost = previousPost;
+                }
+
+                BlueskyRef StrongReferenceToBbCommonRef(StrongReference strongRef)
+                {
+                    return new BlueskyRef()
+                    {
+                        Cid = strongRef.Cid.ToString(),
+                        Uri = strongRef.Uri.ToString()
+                    };
+                }
+
+                item.BlueskyRootRef = StrongReferenceToBbCommonRef(rootPost!);
+                item.BlueskyThisRef = StrongReferenceToBbCommonRef(previousPost!);
             }
-
-            item.BlueskyRootRef = StrongReferenceToBbCommonRef(rootPost!);
-            item.BlueskyThisRef = StrongReferenceToBbCommonRef(previousPost!);
         }
-
-        await agent.Logout();
+        finally
+        {
+            try
+            {
+                await agent.Logout();
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "An error occurred while logging out of Bluesky");
+            }
+        }
     }
 
     private async Task PostToMastodon(PostThread postThread, PostThread? parentThread, MastodonAccount account,
