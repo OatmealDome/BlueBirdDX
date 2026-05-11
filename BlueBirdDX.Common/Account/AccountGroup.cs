@@ -4,7 +4,7 @@ namespace BlueBirdDX.Common.Account;
 
 public class AccountGroup : SlabMongoDocument
 {
-    public const int LatestSchemaVersion = 2;
+    public const int LatestSchemaVersion = 3;
 
     public string Name
     {
