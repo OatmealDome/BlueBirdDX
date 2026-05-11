@@ -7,14 +7,14 @@ app.use(express.json());
 const port = process.env.PORT || 3000;
 
 app.listen(port, () => {
-    console.log("Server now listening on " + port);
+  console.log("Server now listening on " + port);
 });
 
 app.post("/api/count-characters", (req, res) => {
-    const text = req.body.text;
-    res.send({
-        "length": twitter.getTweetLength(text)
-    });
+  const text = req.body.text;
+  res.send({
+      "length": twitter.getTweetLength(text)
+  });
 });
 
 app.post("/api/tokenize", (req, res) => {
