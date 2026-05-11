@@ -6,11 +6,22 @@ public class BlueskyRef
     {
         get;
         set;
-    }
+    } = string.Empty;
 
     public string Cid
     {
         get;
         set;
+    } = string.Empty;
+
+    public BlueskyRef()
+    {
+        //
+    }
+
+    public BlueskyRef(string uri, string cid)
+    {
+        Uri = uri;
+        Cid = cid;
     }
 }
