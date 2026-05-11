@@ -1,0 +1,28 @@
+@page "/account/twitter/authorize"
+@using BlueBirdDX.Common.Account
+@using MongoDB.Driver
+@model AccountTwitterAuthorize
+@{
+    ViewData["Title"] = "Authorize Twitter";
+}
+
+<h1>Authorize Twitter</h1>
+
+<form method="post">
+    <select id="group-select" name="groupId" class="form-select mb-3">
+        @foreach (AccountGroup group in Model.AccountGroupCollection.AsQueryable())
+        {
+            <option value="@group._id.ToString()">@group.Name</option>
+        }
+    </select>
+
+    <div class="text-end mb-3">
+        <button type="submit" class="btn btn-primary">Authorize</button>
+    </div>
+</form>
+
+@section Scripts
+{
+    <script>
+    </script>
+}
