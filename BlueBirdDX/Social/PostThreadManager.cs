@@ -286,8 +286,13 @@ public class PostThreadManager
                     QuotedPost quotedPost = attachmentCache.GetQuotedPost(item.QuotedPost);
 
                     if (quotedPost.TwitterId != null)
-                    {
-                        quotedTweetId = quotedPost.TwitterId;
+                    { 
+                        // This is currently blocked by Twitter anti-spam restrictions.
+                        // quotedTweetId = quotedPost.TwitterId;
+                        
+                        // We can bypass the restrictions by inserting the URL into the tweet directly, though this
+                        // uses up part of our character limit.
+                        text += $" https://x.com/_/status/{quotedPost.TwitterId}";
                     }
                     else
                     {
