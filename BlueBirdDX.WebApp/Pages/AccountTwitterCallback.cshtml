@@ -6,4 +6,11 @@
 
 <h1>Authorization Result</h1>
 
-<p>@Model.AuthorizationResult</p>
+@if (@Model.AuthorizationResult != "OK")
+{
+    <pre><code>@Model.AuthorizationResult</code></pre>
+}
+else
+{
+    <p>OK</p>
+}
