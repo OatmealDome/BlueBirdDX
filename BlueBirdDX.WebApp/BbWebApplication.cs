@@ -26,6 +26,9 @@ public class BbWebApplication : SlabWebApplication
         
         appBuilder.RegisterS3();
         
+        appBuilder.RegisterConfiguration<TextWrapperSettings>("TextWrapper");
+        appBuilder.RegisterSingleton<TextWrapperService>();
+        
         appBuilder.RegisterConfiguration<NotificationSettings>("Notifications");
         appBuilder.RegisterSingleton<NotificationService>();
         
