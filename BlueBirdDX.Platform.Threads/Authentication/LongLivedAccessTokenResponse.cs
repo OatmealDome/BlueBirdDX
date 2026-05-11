@@ -19,8 +19,8 @@ internal class LongLivedAccessTokenResponse : ThreadsJsonResponse
         set;
     }
 
-    [JsonPropertyName("expiry")]
-    public long Expiry
+    [JsonPropertyName("expires_in")]
+    public long ExpiresIn
     {
         get;
         set;

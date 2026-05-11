@@ -250,7 +250,7 @@ public class ThreadsClient
 
         Credentials.CredentialType = ThreadsCredentialType.LongLived;
         Credentials.AccessToken = response.AccessToken;
-        Credentials.Expiry = DateTime.UtcNow.AddSeconds(response.Expiry);
+        Credentials.Expiry = DateTime.UtcNow.AddSeconds(response.ExpiresIn);
 
         return Credentials;
     }
