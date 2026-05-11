@@ -115,24 +115,28 @@ public class TwitterClient
         return responseMessage;
     }
 
-    public async Task Login(string refreshToken)
+    private async Task Login(Dictionary<string, string> urlParameters)
     {
-        RefreshToken = refreshToken;
-        
-        Dictionary<string, string> urlParameters = new Dictionary<string, string>()
-        {
-            { "refresh_token", RefreshToken },
-            { "grant_type", "refresh_token" },
-        };
-        
         using HttpResponseMessage responseMessage = await SendRequestToOAuth2Endpoint("/oauth2/token", urlParameters);
 
         OAuth2TokenResponse tokenResponse = (await responseMessage.Content.ReadFromJsonAsync<OAuth2TokenResponse>())!;
         AccessToken = tokenResponse.AccessToken;
         AccessTokenExpiry = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresIn);
+        RefreshToken = tokenResponse.RefreshToken;
     }
 
-    public async Task LoginWithCodeAndVerifier(string code, string verifier, string redirectUrl)
+    public Task Login(string refreshToken)
+    {
+        Dictionary<string, string> urlParameters = new Dictionary<string, string>()
+        {
+            { "refresh_token", refreshToken },
+            { "grant_type", "refresh_token" },
+        };
+
+        return Login(urlParameters);
+    }
+
+    public Task LoginWithCodeAndVerifier(string code, string verifier, string redirectUrl)
     {
         Dictionary<string, string> urlParameters = new Dictionary<string, string>()
         {
@@ -142,12 +146,7 @@ public class TwitterClient
             { "code_verifier", verifier },
         };
         
-        using HttpResponseMessage responseMessage = await SendRequestToOAuth2Endpoint("/oauth2/token", urlParameters);
-
-        OAuth2TokenResponse tokenResponse = (await responseMessage.Content.ReadFromJsonAsync<OAuth2TokenResponse>())!;
-        AccessToken = tokenResponse.AccessToken;
-        AccessTokenExpiry = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresIn);
-        RefreshToken = tokenResponse.RefreshToken;
+        return Login(urlParameters);
     }
 
     private async Task<string> UploadMedia_Initialize(string category, string mimeType, int fileSize)
