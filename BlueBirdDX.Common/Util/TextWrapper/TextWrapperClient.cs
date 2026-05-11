@@ -3,7 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace BlueBirdDX.Util.TextWrapper;
+namespace BlueBirdDX.Common.Util.TextWrapper;
 
 public class TextWrapperClient
 {

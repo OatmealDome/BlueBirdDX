@@ -1,4 +1,4 @@
-namespace BlueBirdDX.Util.TextWrapper;
+namespace BlueBirdDX.Common.Util.TextWrapper;
 
 public class ExtractedChunk
 {
