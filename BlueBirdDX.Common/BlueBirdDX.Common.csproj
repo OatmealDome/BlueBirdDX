@@ -7,8 +7,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="AWSSDK.S3" Version="3.7.307.15" />
-      <PackageReference Include="MongoDB.Bson" Version="2.24.0" />
+      <ProjectReference Include="..\Slab\OatmealDome.Slab.Mongo\OatmealDome.Slab.Mongo.csproj" />
+      <ProjectReference Include="..\Slab\OatmealDome.Slab\OatmealDome.Slab.csproj" />
     </ItemGroup>
 
 </Project>

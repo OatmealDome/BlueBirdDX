@@ -1,58 +1,47 @@
 using MongoDB.Bson;
+using OatmealDome.Slab.Mongo;
 
 namespace BlueBirdDX.Common.Post;
 
-public class PostThread
+public class PostThread : SlabMongoDocument
 {
     public const int LatestSchemaVersion = 4;
-
-    public ObjectId _id
-    {
-        get;
-        set;
-    }
-
-    public int SchemaVersion
-    {
-        get;
-        set;
-    } = LatestSchemaVersion;
 
     public string Name
     {
         get;
         set;
-    }
+    } = string.Empty;
 
     public ObjectId TargetGroup
     {
         get;
         set;
-    }
+    } = ObjectId.Empty;
 
     public bool PostToTwitter
     {
         get;
         set;
-    }
+    } = false;
 
     public bool PostToBluesky
     {
         get;
         set;
-    }
+    } = false;
 
     public bool PostToMastodon
     {
         get;
         set;
-    }
+    } = false;
 
     public bool PostToThreads
     {
         get;
         set;
-    }
+    } = false;
 
     public ObjectId? ParentThread
     {
@@ -64,13 +53,13 @@ public class PostThread
     {
         get;
         set;
-    }
+    } = DateTime.MinValue;
 
     public PostThreadState State
     {
         get;
         set;
-    }
+    } = PostThreadState.Draft;
 
     public string? ErrorMessage
     {
@@ -82,5 +71,5 @@ public class PostThread
     {
         get;
         set;
-    }
+    } = new List<PostThreadItem>();
 }

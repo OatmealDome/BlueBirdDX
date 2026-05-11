@@ -1,36 +1,26 @@
 using BlueBirdDX.Common.Account;
 using BlueBirdDX.Database;
+using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using OatmealDome.Slab.Mongo;
 using OatmealDome.Unravel;
 using OatmealDome.Unravel.Authentication;
-using Serilog;
-using Serilog.Core;
 
 namespace BlueBirdDX.Social;
 
 public class AccountGroupManager
 {
-    private static AccountGroupManager? _instance;
-    public static AccountGroupManager Instance => _instance!;
-
-    private static readonly ILogger LogContext =
-        Log.ForContext(Constants.SourceContextPropertyName, "AccountGroupManager");
-    
+    private readonly ILogger<AccountGroupManager> _logger;
     private readonly IMongoCollection<AccountGroup> _accountGroupCollection;
-
     private readonly SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1, 1);
 
-    private AccountGroupManager()
+    public AccountGroupManager(ILogger<AccountGroupManager> logger, SlabMongoService mongoService)
     {
-        _accountGroupCollection = DatabaseManager.Instance.GetCollection<AccountGroup>("accounts");
+        _logger = logger;
+        _accountGroupCollection = mongoService.GetCollection<AccountGroup>("accounts");
     }
     
-    public static void Initialize()
-    {
-        _instance = new AccountGroupManager();
-    }
-
     public AccountGroup GetAccountGroup(ObjectId id)
     {
         _semaphoreSlim.Wait();
@@ -68,7 +58,7 @@ public class AccountGroupManager
                     continue;
                 }
                 
-                LogContext.Information("Refreshing Threads token for account group {groupId}", group._id);
+                _logger.LogInformation("Refreshing Threads token for account group {groupId}", group._id);
 
                 ThreadsClient client = new ThreadsClient(account.ClientId, account.ClientSecret)
                 {
@@ -89,7 +79,7 @@ public class AccountGroupManager
                 await _accountGroupCollection.ReplaceOneAsync(Builders<AccountGroup>.Filter.Eq(g => g._id, group._id),
                     group);
 
-                LogContext.Information("Threads token for account group {groupId} refreshed", group._id);
+                _logger.LogInformation("Threads token for account group {groupId} refreshed", group._id);
             }
         }
         finally

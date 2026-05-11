@@ -1,12 +1,13 @@
 using Amazon.S3;
 using BlueBirdDX.Common.Media;
-using BlueBirdDX.Common.Storage;
 using BlueBirdDX.Api;
 using BlueBirdDX.WebApp.Services;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using NATS.Net;
+using OatmealDome.Slab.Mongo;
+using OatmealDome.Slab.S3;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats;
 
@@ -16,15 +17,17 @@ namespace BlueBirdDX.WebApp.Api;
 [Produces("application/json")]
 public class UploadedMediaApiController : ControllerBase
 {
-    private readonly DatabaseService _database;
-    private readonly RemoteStorage _remoteStorage;
+    private readonly IMongoCollection<UploadedMedia> _uploadedMediaCollection;
+    private readonly IMongoCollection<MediaUploadJob> _mediaUploadJobCollection;
+    private readonly SlabS3Service _s3Service;
     private readonly NatsClient _natsClient;
 
-    public UploadedMediaApiController(DatabaseService database, RemoteStorageService remoteStorage,
+    public UploadedMediaApiController(SlabMongoService mongoService, SlabS3Service s3Service,
         NotificationService notification)
     {
-        _database = database;
-        _remoteStorage = remoteStorage.SharedInstance;
+        _uploadedMediaCollection = mongoService.GetCollection<UploadedMedia>("media");
+        _mediaUploadJobCollection = mongoService.GetCollection<MediaUploadJob>("media_jobs");
+        _s3Service = s3Service;
         _natsClient = notification.Client;
     }
     
@@ -33,7 +36,7 @@ public class UploadedMediaApiController : ControllerBase
     [ProducesResponseType(typeof(List<UploadedMediaApi>), StatusCodes.Status200OK)]
     public IActionResult GetMedia()
     {
-        IEnumerable<UploadedMedia> media = _database.UploadedMediaCollection.AsQueryable();
+        IEnumerable<UploadedMedia> media = _uploadedMediaCollection.AsQueryable();
         
         return Ok(media.Select(m => UploadedMediaApiExtensions.CreateApiFromCommon(m)));
     }
@@ -51,14 +54,14 @@ public class UploadedMediaApiController : ControllerBase
             MediaId = null
         };
 
-        _database.MediaUploadJobCollection.InsertOne(uploadJob);
+        _mediaUploadJobCollection.InsertOne(uploadJob);
 
         return uploadJob;
     }
     
     private MediaUploadJob? FindMediaUploadJobById(ObjectId jobId)
     {
-        return _database.MediaUploadJobCollection.AsQueryable().FirstOrDefault(m => m._id == jobId);
+        return _mediaUploadJobCollection.AsQueryable().FirstOrDefault(m => m._id == jobId);
     }
     
     private MediaUploadJob? FindMediaUploadJobById(string jobId)
@@ -101,11 +104,11 @@ public class UploadedMediaApiController : ControllerBase
 
         MediaUploadJob uploadJob = CreateMediaUploadJob(name, format.DefaultMimeType, altText ?? "");
 
-        _remoteStorage.TransferFile("unprocessed_media/" + uploadJob._id.ToString(), memoryStream.ToArray());
+        _s3Service.TransferFile("unprocessed_media/" + uploadJob._id.ToString(), memoryStream.ToArray());
         
         uploadJob.State = MediaUploadJobState.Ready;
 
-        _database.MediaUploadJobCollection.ReplaceOne(Builders<MediaUploadJob>.Filter.Eq(j => j._id, uploadJob._id),
+        _mediaUploadJobCollection.ReplaceOne(Builders<MediaUploadJob>.Filter.Eq(j => j._id, uploadJob._id),
             uploadJob);
         
         await _natsClient.PublishAsync("media.jobs.ready", uploadJob._id.ToString());
@@ -123,8 +126,7 @@ public class UploadedMediaApiController : ControllerBase
             return Problem($"Failed to process job due to error \"{uploadJob.State}\"", statusCode: 500);
         }
 
-        UploadedMedia media = _database.UploadedMediaCollection.AsQueryable()
-            .FirstOrDefault(m => m._id == uploadJob.MediaId)!;
+        UploadedMedia media = _uploadedMediaCollection.AsQueryable().FirstOrDefault(m => m._id == uploadJob.MediaId)!;
 
         return Ok(UploadedMediaApiExtensions.CreateApiFromCommon(media));
     }
@@ -132,13 +134,13 @@ public class UploadedMediaApiController : ControllerBase
     [HttpPost]
     [Route("/api/v2/media/job")]
     [ProducesResponseType(typeof(CreateMediaUploadJobResponse), StatusCodes.Status200OK)]
-    public IActionResult PostMediaUploadJob([FromForm] string name, [FromForm] string mimeType,
+    public async Task<IActionResult> PostMediaUploadJob([FromForm] string name, [FromForm] string mimeType,
         [FromForm] string? altText = null)
     {
         MediaUploadJob uploadJob = CreateMediaUploadJob(name, mimeType, altText ?? "");
 
         string url =
-            _remoteStorage.GetPreSignedUrlForFile("unprocessed_media/" + uploadJob._id.ToString(), HttpVerb.PUT, 60);
+            await _s3Service.GetPreSignedUrlForFile("unprocessed_media/" + uploadJob._id.ToString(), HttpVerb.PUT, 60);
 
         return Ok(new CreateMediaUploadJobResponse()
         {
@@ -173,8 +175,7 @@ public class UploadedMediaApiController : ControllerBase
 
         job.State = (MediaUploadJobState)request.State;
 
-        await _database.MediaUploadJobCollection.ReplaceOneAsync(
-            Builders<MediaUploadJob>.Filter.Eq(j => j._id, job._id), job);
+        await _mediaUploadJobCollection.ReplaceOneAsync(Builders<MediaUploadJob>.Filter.Eq(j => j._id, job._id), job);
 
         await _natsClient.PublishAsync("media.jobs.ready", job._id.ToString());
         
@@ -209,7 +210,7 @@ public class UploadedMediaApiController : ControllerBase
             return null;
         }
 
-        UploadedMedia? media = _database.UploadedMediaCollection.AsQueryable().FirstOrDefault(m => m._id == mediaIdObj);
+        UploadedMedia? media = _uploadedMediaCollection.AsQueryable().FirstOrDefault(m => m._id == mediaIdObj);
 
         if (media == null)
         {
@@ -257,8 +258,7 @@ public class UploadedMediaApiController : ControllerBase
 
         apiMedia.TransferApiToCommon(realMedia);
 
-        _database.UploadedMediaCollection.ReplaceOne(Builders<UploadedMedia>.Filter.Eq(m => m._id, realMedia._id),
-            realMedia);
+        _uploadedMediaCollection.ReplaceOne(Builders<UploadedMedia>.Filter.Eq(m => m._id, realMedia._id), realMedia);
 
         return Ok();
     }

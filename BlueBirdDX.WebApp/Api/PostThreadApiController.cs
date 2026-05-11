@@ -2,10 +2,10 @@ using BlueBirdDX.Common.Account;
 using BlueBirdDX.Common.Media;
 using BlueBirdDX.Common.Post;
 using BlueBirdDX.Api;
-using BlueBirdDX.WebApp.Services;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using OatmealDome.Slab.Mongo;
 
 namespace BlueBirdDX.WebApp.Api;
 
@@ -15,11 +15,15 @@ public class PostThreadApiController : ControllerBase
 {
     private const string TwitterUrlPathRegex = "^/[A-Za-z0-9_]+/status/[0-9]+";
     
-    private readonly DatabaseService _database;
+    private readonly IMongoCollection<PostThread> _postThreadCollection;
+    private readonly IMongoCollection<AccountGroup> _accountGroupCollection;
+    private readonly IMongoCollection<UploadedMedia> _uploadedMediaCollection;
 
-    public PostThreadApiController(DatabaseService database)
+    public PostThreadApiController(SlabMongoService mongoService)
     {
-        _database = database;
+        _postThreadCollection = mongoService.GetCollection<PostThread>("threads");
+        _accountGroupCollection = mongoService.GetCollection<AccountGroup>("accounts");
+        _uploadedMediaCollection = mongoService.GetCollection<UploadedMedia>("media");
     }
 
     [HttpGet]
@@ -34,7 +38,7 @@ public class PostThreadApiController : ControllerBase
             return Problem("Invalid thread ID", statusCode: 404);
         }
 
-        PostThread? postThread = _database.PostThreadCollection.AsQueryable().FirstOrDefault(p => p._id == threadIdObj);
+        PostThread? postThread = _postThreadCollection.AsQueryable().FirstOrDefault(p => p._id == threadIdObj);
 
         if (postThread == null)
         {
@@ -52,7 +56,7 @@ public class PostThreadApiController : ControllerBase
             return false;
         }
 
-        AccountGroup? group = _database.AccountGroupCollection.AsQueryable().FirstOrDefault(g => g._id == groupId);
+        AccountGroup? group = _accountGroupCollection.AsQueryable().FirstOrDefault(g => g._id == groupId);
 
         if (group == null)
         {
@@ -92,8 +96,7 @@ public class PostThreadApiController : ControllerBase
                 return false;
             }
 
-            PostThread? parentThread =
-                _database.PostThreadCollection.AsQueryable().FirstOrDefault(t => t._id == parentId);
+            PostThread? parentThread = _postThreadCollection.AsQueryable().FirstOrDefault(t => t._id == parentId);
 
             if (parentThread == null)
             {
@@ -240,8 +243,7 @@ public class PostThreadApiController : ControllerBase
                     return false;
                 }
 
-                UploadedMedia? media = _database.UploadedMediaCollection.AsQueryable()
-                    .FirstOrDefault(m => m._id == mediaIdObj);
+                UploadedMedia? media = _uploadedMediaCollection.AsQueryable().FirstOrDefault(m => m._id == mediaIdObj);
 
                 if (media == null)
                 {
@@ -270,7 +272,7 @@ public class PostThreadApiController : ControllerBase
         PostThread postThread = new PostThread();
         postThreadApi.TransferApiToCommon(postThread);
         
-        _database.PostThreadCollection.InsertOne(postThread);
+        _postThreadCollection.InsertOne(postThread);
         
         return Ok();
     }
@@ -287,7 +289,7 @@ public class PostThreadApiController : ControllerBase
             return Problem("Invalid thread ID", statusCode: 404);
         }
 
-        PostThread? postThread = _database.PostThreadCollection.AsQueryable().FirstOrDefault(p => p._id == threadIdObj);
+        PostThread? postThread = _postThreadCollection.AsQueryable().FirstOrDefault(p => p._id == threadIdObj);
 
         if (postThread == null)
         {
@@ -305,9 +307,8 @@ public class PostThreadApiController : ControllerBase
         }
         
         postThreadApi.TransferApiToCommon(postThread);
-        
-        _database.PostThreadCollection.ReplaceOne(Builders<PostThread>.Filter.Eq(p => p._id, postThread._id),
-            postThread);
+
+        _postThreadCollection.ReplaceOne(Builders<PostThread>.Filter.Eq(p => p._id, postThread._id), postThread);
 
         return Ok();
     }

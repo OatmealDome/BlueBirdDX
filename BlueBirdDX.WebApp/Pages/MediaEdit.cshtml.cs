@@ -1,18 +1,17 @@
 using BlueBirdDX.Common.Media;
-using BlueBirdDX.Common.Post;
 using BlueBirdDX.Api;
 using BlueBirdDX.WebApp.Api;
-using BlueBirdDX.WebApp.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using OatmealDome.Slab.Mongo;
 
 namespace BlueBirdDX.WebApp.Pages;
 
 public class MediaEditModel : PageModel
 {
-    private readonly DatabaseService _database;
+    private readonly IMongoCollection<UploadedMedia> _uploadedMediaCollection;
 
     public string MediaId
     {
@@ -26,9 +25,9 @@ public class MediaEditModel : PageModel
         set;
     }
 
-    public MediaEditModel(DatabaseService databaseService)
+    public MediaEditModel(SlabMongoService mongoService)
     {
-        _database = databaseService;
+        _uploadedMediaCollection = mongoService.GetCollection<UploadedMedia>("media");
     }
     
     public IActionResult OnGet(string mediaId)
@@ -40,8 +39,7 @@ public class MediaEditModel : PageModel
             return NotFound();
         }
 
-        UploadedMedia? realMedia =
-            _database.UploadedMediaCollection.AsQueryable().SingleOrDefault(m => m._id == objectId);
+        UploadedMedia? realMedia = _uploadedMediaCollection.AsQueryable().SingleOrDefault(m => m._id == objectId);
 
         if (realMedia == null)
         {

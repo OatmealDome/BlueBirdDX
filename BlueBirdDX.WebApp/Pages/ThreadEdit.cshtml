@@ -2,9 +2,7 @@
 @using System.Text.Json
 @using BlueBirdDX.Common.Account
 @using BlueBirdDX.Common.Post
-@using BlueBirdDX.WebApp.Services
 @using MongoDB.Driver
-@inject DatabaseService Database
 @model ThreadEditModel
 @{
     ViewData["Title"] = "Edit Thread";
@@ -26,7 +24,7 @@
     <div>
         <label for="groupSelect" class="form-label">Target Group</label>
         <select id="groupSelect" class="form-select">
-            @foreach (AccountGroup group in Database.AccountGroupCollection.AsQueryable())
+            @foreach (AccountGroup group in Model.AccountGroupCollection.AsQueryable())
             {
                 <option value="@group._id.ToString()">@group.Name</option>
             }
@@ -73,7 +71,7 @@
         <label for="parentSelect" class="form-label">Parent Thread</label>
         <select id="parentSelect" class="form-select">
             <option value="none">(none)</option>
-            @foreach (PostThread thread in Database.PostThreadCollection.AsQueryable().Where(t => t.State == PostThreadState.Sent))
+            @foreach (PostThread thread in Model.PostThreadCollection.AsQueryable().Where(t => t.State == PostThreadState.Sent))
             {
                 <option value="@thread._id.ToString()">@thread.Name</option>
             }

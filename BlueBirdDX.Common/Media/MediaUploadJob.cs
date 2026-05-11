@@ -1,52 +1,41 @@
 using MongoDB.Bson;
+using OatmealDome.Slab.Mongo;
 
 namespace BlueBirdDX.Common.Media;
 
-public class MediaUploadJob
+public class MediaUploadJob : SlabMongoDocument
 {
     public const int LatestSchemaVersion = 1;
-
-    public ObjectId _id
-    {
-        get;
-        set;
-    }
-
-    public int SchemaVersion
-    {
-        get;
-        set;
-    } = LatestSchemaVersion;
 
     public string Name
     {
         get;
         set;
-    }
+    } = string.Empty;
 
     public string MimeType
     {
         get;
         set;
-    }
+    } = string.Empty;
 
     public string AltText
     {
         get;
         set;
-    }
-    
+    } = string.Empty;
+
     public DateTime CreationTime
     {
         get;
         set;
-    }
+    } = DateTime.MinValue;
 
     public MediaUploadJobState State
     {
         get;
         set;
-    }
+    } = MediaUploadJobState.Uploading;
 
     public string? ErrorDetail
     {
@@ -64,5 +53,5 @@ public class MediaUploadJob
     {
         get;
         set;
-    }
+    } = false;
 }

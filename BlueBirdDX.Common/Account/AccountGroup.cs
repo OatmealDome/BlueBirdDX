@@ -1,28 +1,16 @@
-using MongoDB.Bson;
+using OatmealDome.Slab.Mongo;
 
 namespace BlueBirdDX.Common.Account;
 
-public class AccountGroup
+public class AccountGroup : SlabMongoDocument
 {
     public const int LatestSchemaVersion = 2;
-
-    public ObjectId _id
-    {
-        get;
-        set;
-    }
-
-    public int SchemaVersion
-    {
-        get;
-        set;
-    }
 
     public string Name
     {
         get;
         set;
-    }
+    } = string.Empty;
 
     public TwitterAccount? Twitter
     {

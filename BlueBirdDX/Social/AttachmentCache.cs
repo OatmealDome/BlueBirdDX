@@ -1,15 +1,10 @@
 using System.Diagnostics;
 using System.Globalization;
-using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using Amazon.S3;
 using BlueBirdDX.Common.Media;
 using BlueBirdDX.Common.Post;
-using BlueBirdDX.Common.Storage;
-using BlueBirdDX.Config;
-using BlueBirdDX.Config.Storage;
-using BlueBirdDX.Config.WebDriver;
 using BlueBirdDX.Database;
 using BlueBirdDX.Util;
 using MongoDB.Bson;
@@ -18,20 +13,22 @@ using OatmealDome.Airship.ATProtocol.Lexicon.Types;
 using OatmealDome.Airship.ATProtocol.Repo;
 using OatmealDome.Airship.Bluesky;
 using OatmealDome.Airship.Bluesky.Feed;
+using OatmealDome.Slab.Mongo;
+using OatmealDome.Slab.S3;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium.Remote;
 using OpenQA.Selenium.Support.UI;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Jpeg;
 
 namespace BlueBirdDX.Social;
 
 public class AttachmentCache
 {
-    private readonly RemoteStorage _remoteStorage;
+    private readonly SlabS3Service _s3Service;
     private readonly IMongoCollection<UploadedMedia> _uploadedMediaCollection;
     private readonly IMongoCollection<PostThread> _postThreadCollection;
+    private readonly string _seleniumNodeUrl;
+    private readonly string _webAppUrl;
 
     private readonly Dictionary<ObjectId, UploadedMedia>
         _mediaDocumentCache = new Dictionary<ObjectId, UploadedMedia>();
@@ -44,20 +41,17 @@ public class AttachmentCache
             { SocialPlatform.Mastodon, new Dictionary<ObjectId, byte[]>() },
             { SocialPlatform.Threads, new Dictionary<ObjectId, byte[]>() }
         };
-    
-    private readonly Dictionary<string, QuotedPost> _quotedPosts;
-    
-    public AttachmentCache()
-    {
-        RemoteStorageConfig storageConfig = BbConfig.Instance.RemoteStorage;
-        
-        _remoteStorage = new RemoteStorage(storageConfig.ServiceUrl, storageConfig.Bucket, storageConfig.AccessKey,
-            storageConfig.AccessKeySecret);
-        
-        _uploadedMediaCollection = DatabaseManager.Instance.GetCollection<UploadedMedia>("media");
-        _postThreadCollection = DatabaseManager.Instance.GetCollection<PostThread>("threads");
 
-        _quotedPosts = new Dictionary<string, QuotedPost>();
+    private readonly Dictionary<string, QuotedPost> _quotedPosts = new Dictionary<string, QuotedPost>();
+
+    public AttachmentCache(SlabS3Service s3Service, SlabMongoService mongoService, string seleniumNodeUrl,
+        string webAppUrl)
+    {
+        _s3Service = s3Service;
+        _uploadedMediaCollection = mongoService.GetCollection<UploadedMedia>("media");
+        _postThreadCollection = mongoService.GetCollection<PostThread>("threads");
+        _seleniumNodeUrl = seleniumNodeUrl;
+        _webAppUrl = webAppUrl;
     }
 
     public string GetMediaMimeType(ObjectId mediaId, SocialPlatform platform)
@@ -101,9 +95,9 @@ public class AttachmentCache
         return _mediaDataCache[mediaId];
     }
 
-    public string GetMediaPreSignedUrl(ObjectId mediaId)
+    public async Task<string> GetMediaPreSignedUrl(ObjectId mediaId)
     {
-        return _remoteStorage.GetPreSignedUrlForFile("media/" + mediaId.ToString(), HttpVerb.GET, 15);
+        return await _s3Service.GetPreSignedUrlForFile("media/" + mediaId.ToString(), HttpVerb.GET, 15);
     }
     
     public async Task AddMediaToCache(ObjectId mediaId)
@@ -116,13 +110,13 @@ public class AttachmentCache
         UploadedMedia media = _uploadedMediaCollection.AsQueryable().FirstOrDefault(m => m._id == mediaId)!;
         _mediaDocumentCache[mediaId] = media;
 
-        byte[] data = await _remoteStorage.DownloadFile("media/" + mediaId.ToString());
+        byte[] data = await _s3Service.DownloadFile("media/" + mediaId.ToString());
         _mediaDataCache[mediaId] = data;
 
         async Task DownloadOptimizedMedia(SocialPlatform platform)
         {
             byte[] optimizedData =
-                await _remoteStorage.DownloadFile($"media/{mediaId.ToString()}_{platform.ToString().ToLower()}");
+                await _s3Service.DownloadFile($"media/{mediaId.ToString()}_{platform.ToString().ToLower()}");
             _mediaOptimizedDataCache[platform][mediaId] = optimizedData;
         }
         
@@ -223,12 +217,10 @@ public class AttachmentCache
         options.AddArgument("--hide-scrollbars");
         options.AddArgument("--disable-dev-shm-usage"); // avoid "session deleted because of page crash"
 
-        WebDriverConfig config = BbConfig.Instance.WebDriver;
-
-        using RemoteWebDriver remoteWebDriver = new RemoteWebDriver(new Uri(config.NodeUrl), options);
+        using RemoteWebDriver remoteWebDriver = new RemoteWebDriver(new Uri(_seleniumNodeUrl), options);
 
         StringBuilder urlBuilder = new StringBuilder();
-        urlBuilder.Append(BbConfig.Instance.WebDriver.WebAppUrl);
+        urlBuilder.Append(_webAppUrl);
 
         if (urlBuilder[^1] != '/')
         {
@@ -357,9 +349,9 @@ public class AttachmentCache
 
         string remoteImageFileName = ComputeRemoteFileNameForQuotedPost(url);
 
-        _remoteStorage.TransferFile(remoteImageFileName, quotedPost.ImageData, "image/png");
+        await _s3Service.TransferFile(remoteImageFileName, quotedPost.ImageData, "image/png");
 
-        quotedPost.ImageUrl = _remoteStorage.GetPreSignedUrlForFile(remoteImageFileName, HttpVerb.GET, 15);
+        quotedPost.ImageUrl = await _s3Service.GetPreSignedUrlForFile(remoteImageFileName, HttpVerb.GET, 15);
 
         return quotedPost;
     }

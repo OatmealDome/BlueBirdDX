@@ -1,19 +1,16 @@
 using MongoDB.Bson;
+using OatmealDome.Slab.Mongo;
 
 namespace BlueBirdDX.Database.Migration.AccountGroup;
 
-public class AccountGroupMigratorOneToTwo : IDocumentMigrator
+public class AccountGroupMigratorOneToTwo : SlabMongoDocumentMigrator<Common.Account.AccountGroup>
 {
-    public bool DoesDocumentRequireMigration(BsonDocument document)
-    {
-        return document["SchemaVersion"] == 1;
-    }
+    public override int OldSchemaVersion => 1;
+    public override int NewSchemaVersion => 2;
 
-    public Task MigrateDocument(BsonDocument document)
+    public override Task MigrateDocument(BsonDocument document)
     {
         document.Set("Threads", BsonNull.Value);
-
-        document.Set("SchemaVersion", 2);
 
         return Task.CompletedTask;
     }

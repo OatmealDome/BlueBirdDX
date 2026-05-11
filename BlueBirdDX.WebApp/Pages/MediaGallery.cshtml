@@ -1,8 +1,8 @@
 @page "/media"
-@using BlueBirdDX.WebApp.Services
 @using BlueBirdDX.Common.Media
 @using MongoDB.Driver
-@inject DatabaseService Database
+@using OatmealDome.Slab.Mongo
+@inject SlabMongoService Database
 @{
     ViewData["Title"] = "Media Gallery";
 }
@@ -21,7 +21,7 @@
     </tr>
     </thead>
     <tbody>
-    @foreach (UploadedMedia media in Database.UploadedMediaCollection.AsQueryable())
+    @foreach (UploadedMedia media in Database.GetCollection<UploadedMedia>("media").AsQueryable())
     {
         <tr>
             <td>@media.Name</td>

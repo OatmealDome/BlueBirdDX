@@ -1,18 +1,21 @@
 using BlueBirdDX.Common.Media;
 using BlueBirdDX.Common.Post;
 using BlueBirdDX.Api;
+using BlueBirdDX.Common.Account;
 using BlueBirdDX.WebApp.Api;
-using BlueBirdDX.WebApp.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using OatmealDome.Slab.Mongo;
 
 namespace BlueBirdDX.WebApp.Pages;
 
 public class ThreadEditModel : PageModel
 {
-    private readonly DatabaseService _database;
+    public readonly IMongoCollection<PostThread> PostThreadCollection;
+    public readonly IMongoCollection<AccountGroup> AccountGroupCollection;
+    private readonly IMongoCollection<UploadedMedia> _uploadedMediaCollection;
 
     public string ApiThreadId
     {
@@ -32,9 +35,11 @@ public class ThreadEditModel : PageModel
         set;
     }
 
-    public ThreadEditModel(DatabaseService databaseService)
+    public ThreadEditModel(SlabMongoService mongoService)
     {
-        _database = databaseService;
+        PostThreadCollection = mongoService.GetCollection<PostThread>("threads");
+        AccountGroupCollection = mongoService.GetCollection<AccountGroup>("accounts");
+        _uploadedMediaCollection = mongoService.GetCollection<UploadedMedia>("media");
     }
 
     public IActionResult OnGet(string threadId, [FromQuery] string? baseThreadId = null)
@@ -48,8 +53,7 @@ public class ThreadEditModel : PageModel
                 return null;
             }
 
-            PostThread? realThread =
-                _database.PostThreadCollection.AsQueryable().SingleOrDefault(p => p._id == objectId);
+            PostThread? realThread = PostThreadCollection.AsQueryable().SingleOrDefault(p => p._id == objectId);
  
             if (realThread == null)
             {
@@ -60,7 +64,7 @@ public class ThreadEditModel : PageModel
 
             List<ObjectId> mediaIds = realThread.Items.SelectMany(i => i.AttachedMedia).Distinct().ToList();
             IEnumerable<UploadedMedia> allMedia =
-                _database.UploadedMediaCollection.AsQueryable().Where(m => mediaIds.Contains(m._id));
+                _uploadedMediaCollection.AsQueryable().Where(m => mediaIds.Contains(m._id));
 
             foreach (UploadedMedia media in allMedia)
             {

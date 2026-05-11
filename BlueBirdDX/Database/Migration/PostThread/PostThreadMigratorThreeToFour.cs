@@ -1,15 +1,14 @@
 using MongoDB.Bson;
+using OatmealDome.Slab.Mongo;
 
 namespace BlueBirdDX.Database.Migration.PostThread;
 
-public class PostThreadMigratorThreeToFour : IDocumentMigrator
+public class PostThreadMigratorThreeToFour : SlabMongoDocumentMigrator<Common.Post.PostThread>
 {
-    public bool DoesDocumentRequireMigration(BsonDocument document)
-    {
-        return document["SchemaVersion"] == 3;
-    }
+    public override int OldSchemaVersion => 3;
+    public override int NewSchemaVersion => 4;
 
-    public Task MigrateDocument(BsonDocument document)
+    public override Task MigrateDocument(BsonDocument document)
     {
         document.Set("ParentThread", BsonNull.Value);
         
@@ -25,8 +24,6 @@ public class PostThreadMigratorThreeToFour : IDocumentMigrator
             itemDocument["MastodonId"] = BsonNull.Value;
             itemDocument["ThreadsId"] = BsonNull.Value;
         }
-        
-        document.Set("SchemaVersion", 4);
         
         return Task.CompletedTask;
     }

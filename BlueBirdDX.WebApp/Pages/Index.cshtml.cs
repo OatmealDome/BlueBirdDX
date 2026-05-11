@@ -1,18 +1,24 @@
-using Microsoft.AspNetCore.Mvc;
+using BlueBirdDX.Common.Account;
+using BlueBirdDX.Common.Post;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using MongoDB.Driver;
+using OatmealDome.Slab.Mongo;
 
 namespace BlueBirdDX.WebApp.Pages;
 
 public class IndexModel : PageModel
 {
-    private readonly ILogger<IndexModel> _logger;
+    public readonly IMongoCollection<AccountGroup> AccountGroupCollection;
+    public readonly IMongoCollection<PostThread> PostThreadCollection;
 
-    public IndexModel(ILogger<IndexModel> logger)
+    public IndexModel(SlabMongoService mongoService)
     {
-        _logger = logger;
+        AccountGroupCollection = mongoService.GetCollection<AccountGroup>("accounts");
+        PostThreadCollection = mongoService.GetCollection<PostThread>("threads");
     }
 
     public void OnGet()
     {
+        //
     }
 }

@@ -19,10 +19,11 @@
     <ItemGroup>
       <ProjectReference Include="..\BlueBirdDX.Common\BlueBirdDX.Common.csproj" />
       <ProjectReference Include="..\BlueBirdDX.Api\BlueBirdDX.Api.csproj" />
+      <ProjectReference Include="..\Slab\OatmealDome.Slab.S3\OatmealDome.Slab.S3.csproj" />
+      <ProjectReference Include="..\Slab\OatmealDome.Slab.Web\OatmealDome.Slab.Web.csproj" />
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="MongoDB.Driver" Version="2.24.0" />
       <PackageReference Include="NATS.Net" Version="2.5.5" />
       <PackageReference Include="SixLabors.ImageSharp" Version="3.1.4" />
     </ItemGroup>

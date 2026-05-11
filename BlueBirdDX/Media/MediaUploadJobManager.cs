@@ -1,25 +1,24 @@
 using Amazon.Runtime;
 using BlueBirdDX.Common.Media;
-using BlueBirdDX.Common.Storage;
-using BlueBirdDX.Config;
-using BlueBirdDX.Config.Storage;
-using BlueBirdDX.Config.Video;
 using BlueBirdDX.Database;
 using BlueBirdDX.Util;
 using FFMpegCore;
 using FFMpegCore.Enums;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using NATS.Client.Core;
 using NATS.Net;
-using Serilog;
-using Serilog.Core;
+using OatmealDome.Slab.Mongo;
+using OatmealDome.Slab.S3;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Jpeg;
 
 namespace BlueBirdDX.Media;
 
-public class MediaUploadJobManager
+public class MediaUploadJobManager : BackgroundService
 {
     // https://developer.x.com/en/docs/x-api/v1/media/upload-media/uploading-media/media-best-practices
     private const int TwitterMaximumImageSize = 5242880;
@@ -45,51 +44,45 @@ public class MediaUploadJobManager
     private const int VideoFileSizeMargin = 5 * OneMebibyte;
     private const int VideoTargetAudioBitrate = 128;
     
-    private static readonly ILogger LogContext =
-        Log.ForContext(Constants.SourceContextPropertyName, "MediaUploadJobManager");
-    
-    private static MediaUploadJobManager? _instance;
-    public static MediaUploadJobManager Instance => _instance!;
-
+    private readonly ILogger<MediaUploadJobManager> _logger;
+    private readonly MediaUploadJobManagerConfiguration _settings;
     private readonly NatsClient _natsClient;
-    private readonly RemoteStorage _remoteStorage;
+    private readonly SlabS3Service _s3Service;
     private readonly IMongoCollection<MediaUploadJob> _uploadJobCollection;
     private readonly IMongoCollection<UploadedMedia> _mediaCollection;
     private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
     private readonly bool _isVideoAvailable;
 
-    public MediaUploadJobManager()
+    public MediaUploadJobManager(ILogger<MediaUploadJobManager> logger,
+        IOptions<MediaUploadJobManagerConfiguration> settings, SlabS3Service s3Service, SlabMongoService mongoService)
     {
-        _natsClient = new NatsClient(BbConfig.Instance.Notification.Server);
-        
-        RemoteStorageConfig storageConfig = BbConfig.Instance.RemoteStorage;
-        
-        _remoteStorage = new RemoteStorage(storageConfig.ServiceUrl, storageConfig.Bucket, storageConfig.AccessKey,
-            storageConfig.AccessKeySecret);
+        _logger = logger;
+        _settings = settings.Value;
+        _natsClient = new NatsClient(_settings.NatsServer);
+        _s3Service = s3Service;
+        _uploadJobCollection = mongoService.GetCollection<MediaUploadJob>("media_jobs");
+        _mediaCollection = mongoService.GetCollection<UploadedMedia>("media");
 
-        _uploadJobCollection = DatabaseManager.Instance.GetCollection<MediaUploadJob>("media_jobs");
-        _mediaCollection = DatabaseManager.Instance.GetCollection<UploadedMedia>("media");
-
-        VideoConfig videoConfig = BbConfig.Instance.Video;
-
-        if (videoConfig.FFmpegBinariesFolder != null || videoConfig.FFmpegBinariesFolder == "")
+        if (_settings.FFmpegBinariesFolder != null || _settings.FFmpegBinariesFolder == "")
         {
             GlobalFFOptions.Configure(new FFOptions()
             {
-                BinaryFolder = videoConfig.FFmpegBinariesFolder,
-                TemporaryFilesFolder = videoConfig.TemporaryFolder
+                BinaryFolder = _settings.FFmpegBinariesFolder,
+                TemporaryFilesFolder = _settings.TemporaryFolder
             });
 
             _isVideoAvailable = true;
         }
     }
     
-    public static void Initialize()
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _instance = new MediaUploadJobManager();
-    }
+        await ProcessAllWaitingReadyMediaJobs();
 
+        await ListenForReadyMediaJobs();
+    }
+    
     private async Task<byte[]> ProcessImage(UploadedMedia media, byte[] imageData,
         Dictionary<SocialPlatform, byte[]> optimizedImages)
     {
@@ -156,7 +149,7 @@ public class MediaUploadJobManager
     private async Task<byte[]> ProcessVideo(UploadedMedia media, byte[] videoData,
         Dictionary<SocialPlatform, byte[]> optimizedVideos)
     {
-        string path = Path.Combine(BbConfig.Instance.Video.TemporaryFolder, Path.GetRandomFileName());
+        string path = Path.Combine(_settings.TemporaryFolder, Path.GetRandomFileName());
 
         await File.WriteAllBytesAsync(path, videoData);
 
@@ -166,7 +159,7 @@ public class MediaUploadJobManager
         media.Width = analysis.PrimaryVideoStream!.Width;
         media.Height = analysis.PrimaryVideoStream!.Height;
 
-        string standardPath = Path.Combine(BbConfig.Instance.Video.TemporaryFolder, Path.GetRandomFileName() + ".mp4");
+        string standardPath = Path.Combine(_settings.TemporaryFolder, Path.GetRandomFileName() + ".mp4");
         
         bool returnCode = FFMpegArguments
             .FromFileInput(path)
@@ -209,7 +202,7 @@ public class MediaUploadJobManager
                 throw new Exception("First pass for platform-specific video encoding failed");
             }
 
-            string outPath = Path.Combine(BbConfig.Instance.Video.TemporaryFolder, Path.GetRandomFileName() + ".mp4");
+            string outPath = Path.Combine(_settings.TemporaryFolder, Path.GetRandomFileName() + ".mp4");
             
             localReturnCode = FFMpegArguments
                 .FromFileInput(path)
@@ -263,7 +256,7 @@ public class MediaUploadJobManager
 
         if (uploadJob.IsJobForMigrationTwoToThree)
         {
-            LogContext.Information("Processing media job {jobId} with two -> three migration for media ID {mediaId}",
+            _logger.LogInformation("Processing media job {jobId} with two -> three migration for media ID {mediaId}",
                 uploadJob._id.ToString(), uploadJob._id.ToString());
             
             media = _mediaCollection.AsQueryable().FirstOrDefault(m => m._id == uploadJob.MediaId)!;
@@ -284,7 +277,7 @@ public class MediaUploadJobManager
                 CreationTime = DateTime.UtcNow
             };
 
-            LogContext.Information("Processing media job {jobId} with new media ID {mediaId}", uploadJob._id.ToString(),
+            _logger.LogInformation("Processing media job {jobId} with new media ID {mediaId}", uploadJob._id.ToString(),
                 mediaId.ToString());
 
             unprocessedFileName = "unprocessed_media/" + uploadJob._id.ToString();
@@ -295,7 +288,7 @@ public class MediaUploadJobManager
         
         try
         {
-            byte[] data = await _remoteStorage.DownloadFile(unprocessedFileName);
+            byte[] data = await _s3Service.DownloadFile(unprocessedFileName);
 
             byte[] standardData;
 
@@ -323,14 +316,14 @@ public class MediaUploadJobManager
 
             if (!uploadJob.IsJobForMigrationTwoToThree)
             {
-                await _remoteStorage.DeleteFile(unprocessedFileName);
+                await _s3Service.DeleteFile(unprocessedFileName);
             
-                _remoteStorage.TransferFile(fileName, standardData, media.MimeType);
+                await _s3Service.TransferFile(fileName, standardData, media.MimeType);
             }
 
             foreach (KeyValuePair<SocialPlatform, byte[]> pair in optimizedData)
             {
-                _remoteStorage.TransferFile($"{fileName}_{pair.Key.ToString().ToLower()}", pair.Value, "image/jpeg");
+                await _s3Service.TransferFile($"{fileName}_{pair.Key.ToString().ToLower()}", pair.Value, "image/jpeg");
             }
 
             if (!uploadJob.IsJobForMigrationTwoToThree)
@@ -345,11 +338,11 @@ public class MediaUploadJobManager
             uploadJob.State = MediaUploadJobState.Success;
             uploadJob.MediaId = media._id;
 
-            LogContext.Information("Finished processing media job {jobId}", uploadJob._id.ToString());
+            _logger.LogInformation("Finished processing media job {jobId}", uploadJob._id.ToString());
         }
         catch (Exception e)
         {
-            LogContext.Error(e, "An error occurred while processing media job {jobId}", uploadJob._id.ToString());
+            _logger.LogError(e, "An error occurred while processing media job {jobId}", uploadJob._id.ToString());
             
             uploadJob.State = MediaUploadJobState.Failed;
             uploadJob.ErrorDetail = $"{e.GetType().Name} occurred while trying to process the media: {e.Message}";
@@ -358,12 +351,13 @@ public class MediaUploadJobManager
             {
                 if (!uploadJob.IsJobForMigrationTwoToThree)
                 {
-                    await _remoteStorage.DeleteFile(unprocessedFileName);
+                    await _s3Service.DeleteFile(unprocessedFileName);
                 }
             }
             catch (Exception e2)
             {
-                LogContext.Error(e2, "Additionally, an error occurred while deleting the unprocessed media for {jobId}", uploadJob._id.ToString());
+                _logger.LogError(e2, "Additionally, an error occurred while deleting the unprocessed media for {jobId}",
+                    uploadJob._id.ToString());
                 
                 uploadJob.ErrorDetail +=
                     $"(additionally, {e2.GetType().Name} occurred while trying to delete the unprocessed media)";
@@ -376,7 +370,7 @@ public class MediaUploadJobManager
 
     public async Task ProcessAllWaitingReadyMediaJobs()
     {
-        LogContext.Information("Attempting to process all waiting media jobs");
+        _logger.LogInformation("Attempting to process all waiting media jobs");
         
         await _semaphore.WaitAsync();
 
@@ -390,14 +384,14 @@ public class MediaUploadJobManager
         }
         catch (Exception e)
         {
-            LogContext.Error(e, "Unexpected error during processing of waiting jobs");
+            _logger.LogError(e, "Unexpected error during processing of waiting jobs");
         }
         finally
         {
             _semaphore.Release();
         }
         
-        LogContext.Information("All waiting media jobs have been processed");
+        _logger.LogInformation("All waiting media jobs have been processed");
     }
 
     public async Task ListenForReadyMediaJobs()
@@ -417,7 +411,7 @@ public class MediaUploadJobManager
                 }
                 catch (Exception e)
                 {
-                    LogContext.Error(e, "Unexpected error during processing a ready job");
+                    _logger.LogError(e, "Unexpected error during processing a ready job");
                 }
                 finally
                 {
@@ -429,7 +423,7 @@ public class MediaUploadJobManager
 
     private async Task CleanUpOldJob(MediaUploadJob uploadJob)
     {
-        LogContext.Information("Deleting media job {jobId}", uploadJob._id.ToString());
+        _logger.LogInformation("Deleting media job {jobId}", uploadJob._id.ToString());
         
         await _uploadJobCollection.DeleteOneAsync(Builders<MediaUploadJob>.Filter.Eq(j => j._id, uploadJob._id));
         
@@ -439,7 +433,7 @@ public class MediaUploadJobManager
 
             try
             {
-                await _remoteStorage.DeleteFile(unprocessedFileName);
+                await _s3Service.DeleteFile(unprocessedFileName);
             }
             catch (AmazonServiceException)
             {
@@ -450,7 +444,7 @@ public class MediaUploadJobManager
     
     public async Task CleanUpOldJobs()
     {
-        LogContext.Information("Cleaning up old media jobs");
+        _logger.LogInformation("Cleaning up old media jobs");
         
         await _semaphore.WaitAsync();
         
@@ -470,13 +464,13 @@ public class MediaUploadJobManager
         }
         catch (Exception e)
         {
-            LogContext.Error(e, "Unexpected error during clean up");
+            _logger.LogError(e, "Unexpected error during clean up");
         }
         finally
         {
             _semaphore.Release();
         }
         
-        LogContext.Information("Finished clean up");
+        _logger.LogInformation("Finished clean up");
     }
 }

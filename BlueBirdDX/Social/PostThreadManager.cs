@@ -2,13 +2,14 @@ using System.Text;
 using BlueBirdDX.Common.Account;
 using BlueBirdDX.Common.Post;
 using BlueBirdDX.Common.Util;
-using BlueBirdDX.Config;
 using BlueBirdDX.Database;
 using BlueBirdDX.Social.Twitter;
 using BlueBirdDX.Util;
 using BlueBirdDX.Util.TextWrapper;
 using Mastonet;
 using Mastonet.Entities;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using OatmealDome.Airship.ATProtocol.Lexicon.Types;
@@ -20,6 +21,8 @@ using OatmealDome.Airship.Bluesky.Embed.Record;
 using OatmealDome.Airship.Bluesky.Embed.Video;
 using OatmealDome.Airship.Bluesky.Feed;
 using OatmealDome.Airship.Bluesky.Feed.Facets;
+using OatmealDome.Slab.Mongo;
+using OatmealDome.Slab.S3;
 using OatmealDome.Unravel;
 using OatmealDome.Unravel.Authentication;
 using OatmealDome.Unravel.Publishing;
@@ -36,23 +39,28 @@ public class PostThreadManager
     private const int ThreadsWaitForReadyRetryDelay = 5;
 
     private const string DifferentPlatformQuoteImageAltText = "A screenshot of a post on a different platform.";
-    
-    private static PostThreadManager? _instance;
-    public static PostThreadManager Instance => _instance!;
 
-    private static readonly ILogger LogContext =
-        Log.ForContext(Constants.SourceContextPropertyName, "PostThreadManager");
-    
+    private readonly ILogger<PostThreadManager> _logger;
+    private readonly PostThreadManagerConfiguration _settings;
+    private readonly SlabMongoService _mongoService;
+    private readonly SlabS3Service _s3Service;
     private readonly IMongoCollection<PostThread> _postThreadCollection;
+    private readonly AccountGroupManager _accountGroupManager;
+    private readonly TextWrapperClient _textWrapperClient;
     
     private readonly ResiliencePipeline _retryResiliencePipeline;
     private readonly ResiliencePipeline _threadsTimeoutResiliencePipeline;
 
-    private readonly TextWrapperClient _textWrapperClient;
-
-    private PostThreadManager()
+    public PostThreadManager(ILogger<PostThreadManager> logger, IOptions<PostThreadManagerConfiguration> settings,
+        SlabMongoService mongoService, SlabS3Service s3Service, AccountGroupManager accountGroupManager)
     {
-        _postThreadCollection = DatabaseManager.Instance.GetCollection<PostThread>("threads");
+        _logger = logger;
+        _settings = settings.Value;
+        _mongoService = mongoService;
+        _s3Service = s3Service;
+        _postThreadCollection = mongoService.GetCollection<PostThread>("threads");
+        _accountGroupManager = accountGroupManager;
+        _textWrapperClient = new TextWrapperClient(_settings.TextWrapperServer);
         
         RetryStrategyOptions retryOptions = new RetryStrategyOptions
         {
@@ -68,15 +76,8 @@ public class PostThreadManager
         _threadsTimeoutResiliencePipeline = new ResiliencePipelineBuilder()
             .AddTimeout(TimeSpan.FromSeconds(ThreadsWaitForReadyTimeout))
             .Build();
-
-        _textWrapperClient = new TextWrapperClient(BbConfig.Instance.TextWrapper.ServerUrl);
     }
     
-    public static void Initialize()
-    {
-        _instance = new PostThreadManager();
-    }
-
     private async Task UpdateThreadState(PostThread thread, PostThreadState state, string? errorMessage = null)
     {
         thread.State = state;
@@ -112,7 +113,7 @@ public class PostThreadManager
                     }
                     catch (Exception e)
                     {
-                        LogContext.Error(e, "An exception occurred during processing of thread {id}",
+                        _logger.LogError(e, "An exception occurred during processing of thread {id}",
                             postThread._id.ToString());
 
                         await UpdateThreadState(postThread, PostThreadState.Error,
@@ -121,7 +122,7 @@ public class PostThreadManager
                 }
                 else
                 {
-                    LogContext.Error(
+                    _logger.LogError(
                         "Skipping thread {id} because its scheduled time is outside of the margin of error",
                         postThread._id.ToString());
 
@@ -134,11 +135,12 @@ public class PostThreadManager
 
     private async Task ProcessPostThread(PostThread postThread)
     {
-        LogContext.Information("Processing thread {id}", postThread._id.ToString());
+        _logger.LogInformation("Processing thread {id}", postThread._id.ToString());
 
-        LogContext.Information("Fetching quoted posts for {id}", postThread._id.ToString());
-        
-        AttachmentCache attachmentCache = new AttachmentCache();
+        _logger.LogInformation("Fetching quoted posts for {id}", postThread._id.ToString());
+
+        AttachmentCache attachmentCache =
+            new AttachmentCache(_s3Service, _mongoService, _settings.SeleniumNodeUrl, _settings.WebAppUrl);
         
         foreach (PostThreadItem item in postThread.Items)
         {
@@ -159,18 +161,18 @@ public class PostThreadManager
             }
         }
 
-        LogContext.Information("Downloading media for thread {id}", postThread._id.ToString());
+        _logger.LogInformation("Downloading media for thread {id}", postThread._id.ToString());
         
         foreach (ObjectId mediaId in postThread.Items.SelectMany(i => i.AttachedMedia))
         {
             await attachmentCache.AddMediaToCache(mediaId);
         }
 
-        LogContext.Information("Beginning post process for thread {id}", postThread._id.ToString());
+        _logger.LogInformation("Beginning post process for thread {id}", postThread._id.ToString());
         
         await Post(postThread, attachmentCache);
         
-        LogContext.Information("Processed thread {id}", postThread._id.ToString());
+        _logger.LogInformation("Processed thread {id}", postThread._id.ToString());
     }
 
     private async Task Post(PostThread postThread, AttachmentCache attachmentCache)
@@ -184,7 +186,7 @@ public class PostThreadManager
             errorBuilder.AppendLine(error);
         }
 
-        AccountGroup group = AccountGroupManager.Instance.GetAccountGroup(postThread.TargetGroup);
+        AccountGroup group = _accountGroupManager.GetAccountGroup(postThread.TargetGroup);
 
         PostThread? parentThread = null;
 
@@ -195,7 +197,7 @@ public class PostThreadManager
 
         if (postThread.PostToTwitter && group.Twitter != null)
         {
-            LogContext.Information("Posting thread {id} to Twitter", postThread._id.ToString());
+            _logger.LogInformation("Posting thread {id} to Twitter", postThread._id.ToString());
             
             try
             {
@@ -203,7 +205,7 @@ public class PostThreadManager
             }
             catch (Exception e)
             {
-                LogContext.Error(e, "Failed to post thread {id} to Twitter", postThread._id.ToString());
+                _logger.LogError(e, "Failed to post thread {id} to Twitter", postThread._id.ToString());
                 
                 failed = true;
                 AppendError(e.ToString());
@@ -212,7 +214,7 @@ public class PostThreadManager
         
         if (postThread.PostToBluesky && group.Bluesky != null)
         {
-            LogContext.Information("Posting thread {id} to Bluesky", postThread._id.ToString());
+            _logger.LogInformation("Posting thread {id} to Bluesky", postThread._id.ToString());
             
             try
             {
@@ -220,7 +222,7 @@ public class PostThreadManager
             }
             catch (Exception e)
             {
-                LogContext.Error(e, "Failed to post thread {id} to Bluesky", postThread._id.ToString());
+                _logger.LogError(e, "Failed to post thread {id} to Bluesky", postThread._id.ToString());
                 
                 failed = true;
                 AppendError(e.ToString());
@@ -229,7 +231,7 @@ public class PostThreadManager
         
         if (postThread.PostToMastodon && group.Mastodon != null)
         {
-            LogContext.Information("Posting thread {id} to Mastodon", postThread._id.ToString());
+            _logger.LogInformation("Posting thread {id} to Mastodon", postThread._id.ToString());
             
             try
             {
@@ -237,7 +239,7 @@ public class PostThreadManager
             }
             catch (Exception e)
             {
-                LogContext.Error(e, "Failed to post thread {id} to Mastodon", postThread._id.ToString());
+                _logger.LogError(e, "Failed to post thread {id} to Mastodon", postThread._id.ToString());
                 
                 failed = true;
                 AppendError(e.ToString());
@@ -246,7 +248,7 @@ public class PostThreadManager
         
         if (postThread.PostToThreads && group.Threads != null)
         {
-            LogContext.Information("Posting thread {id} to Threads", postThread._id.ToString());
+            _logger.LogInformation("Posting thread {id} to Threads", postThread._id.ToString());
             
             try
             {
@@ -254,7 +256,7 @@ public class PostThreadManager
             }
             catch (Exception e)
             {
-                LogContext.Error(e, "Failed to post thread {id} to Threads", postThread._id.ToString());
+                _logger.LogError(e, "Failed to post thread {id} to Threads", postThread._id.ToString());
                 
                 failed = true;
                 AppendError(e.ToString());
@@ -780,7 +782,7 @@ public class PostThreadManager
 
             foreach (ObjectId attachmentId in item.AttachedMedia)
             {
-                attachments.Add((attachmentCache.GetMediaPreSignedUrl(attachmentId),
+                attachments.Add((await attachmentCache.GetMediaPreSignedUrl(attachmentId),
                     attachmentCache.GetMediaMimeType(attachmentId, SocialPlatform.Threads),
                     attachmentCache.GetMediaAltText(attachmentId)));
             }

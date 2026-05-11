@@ -1,9 +1,9 @@
 using BlueBirdDX.Common.Account;
 using BlueBirdDX.Common.Post;
-using BlueBirdDX.WebApp.Services;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using OatmealDome.Slab.Mongo;
 
 namespace BlueBirdDX.WebApp.Api;
 
@@ -11,11 +11,13 @@ namespace BlueBirdDX.WebApp.Api;
 [Produces("application/json")]
 public class AccountGroupApiController : ControllerBase
 {
-    private readonly DatabaseService _database;
+    private readonly IMongoCollection<AccountGroup> _accountGroupCollection;
+    private readonly IMongoCollection<PostThread> _postThreadCollection;
 
-    public AccountGroupApiController(DatabaseService database)
+    public AccountGroupApiController(SlabMongoService mongoService)
     {
-        _database = database;
+        _accountGroupCollection = mongoService.GetCollection<AccountGroup>("accounts");
+        _postThreadCollection = mongoService.GetCollection<PostThread>("threads");
     }
 
     [HttpGet]
@@ -29,15 +31,14 @@ public class AccountGroupApiController : ControllerBase
             return Problem("Invalid group ID", statusCode: 404);
         }
 
-        AccountGroup? group = _database.AccountGroupCollection.AsQueryable().FirstOrDefault(g => g._id == groupIdObj);
+        AccountGroup? group = _accountGroupCollection.AsQueryable().FirstOrDefault(g => g._id == groupIdObj);
 
         if (group == null)
         {
             return Problem("Invalid group ID", statusCode: 404);
         }
 
-        IEnumerable<PostThread> threads =
-            _database.PostThreadCollection.AsQueryable().Where(p => p.TargetGroup == groupIdObj);
+        IEnumerable<PostThread> threads = _postThreadCollection.AsQueryable().Where(p => p.TargetGroup == groupIdObj);
         
         return Ok(threads.Select(p => new PostThreadMiniApi(p)));
     }

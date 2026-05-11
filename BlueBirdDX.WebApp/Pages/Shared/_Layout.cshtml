@@ -1,6 +1,7 @@
 ﻿@using BlueBirdDX.WebApp.Models
 @using Microsoft.AspNetCore.Mvc.TagHelpers
-@inject DatabaseSettings DbSettings
+@using Microsoft.Extensions.Options
+@inject IOptions<DatabaseSettings> DbSettings
 
 <!DOCTYPE html>
 <html lang="en">
@@ -33,7 +34,7 @@
                         <a class="nav-link" href="/media">Media Gallery</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="@DbSettings.MongoExpressUrl">Mongo Express</a>
+                        <a class="nav-link" href="@DbSettings.Value.MongoExpressUrl">Mongo Express</a>
                     </li>
                 </ul>
             </div>

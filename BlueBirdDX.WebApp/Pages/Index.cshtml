@@ -1,5 +1,4 @@
 ﻿@page
-@inject DatabaseService Database
 @using BlueBirdDX.WebApp.Services
 @using MongoDB.Driver
 @using BlueBirdDX.Common.Account
@@ -17,7 +16,7 @@
     {
         if (ObjectId.TryParse(groupCookie, out ObjectId groupId))
         {
-            if (Database.AccountGroupCollection.AsQueryable().FirstOrDefault(g => g._id == groupId) != null)
+            if (Model.AccountGroupCollection.AsQueryable().FirstOrDefault(g => g._id == groupId) != null)
             {
                 defaultGroupId = groupCookie;
             }
@@ -26,7 +25,7 @@
 
     if (defaultGroupId == null)
     {
-        defaultGroupId = Database.AccountGroupCollection.AsQueryable().FirstOrDefault()!._id.ToString();
+        defaultGroupId = Model.AccountGroupCollection.AsQueryable().FirstOrDefault()!._id.ToString();
         
         HttpContext.Response.Cookies.Append(cookieName, defaultGroupId, new CookieOptions()
         {
@@ -44,7 +43,7 @@
 </div>
 
 <select id="groupSelect" class="form-select mb-3">
-    @foreach (AccountGroup group in Database.AccountGroupCollection.AsQueryable())
+    @foreach (AccountGroup group in Model.AccountGroupCollection.AsQueryable())
     {
         <option value="@group._id.ToString()">@group.Name</option>
     }
