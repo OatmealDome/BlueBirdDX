@@ -19,6 +19,7 @@
     <ItemGroup>
       <ProjectReference Include="..\BlueBirdDX.Common\BlueBirdDX.Common.csproj" />
       <ProjectReference Include="..\BlueBirdDX.Api\BlueBirdDX.Api.csproj" />
+      <ProjectReference Include="..\BlueBirdDX.Platform.Twitter\BlueBirdDX.Platform.Twitter.csproj" />
       <ProjectReference Include="..\Slab\OatmealDome.Slab.S3\OatmealDome.Slab.S3.csproj" />
       <ProjectReference Include="..\Slab\OatmealDome.Slab.Web\OatmealDome.Slab.Web.csproj" />
     </ItemGroup>
