@@ -2,9 +2,13 @@ namespace BlueBirdDX.Platform.Twitter;
 
 public class TwitterClient
 {
-    public TwitterClient(string consumerKey, string consumerSecret, string accessToken, string accessTokenSecret)
+    private readonly string _clientId;
+    private readonly string _clientSecret;
+
+    public TwitterClient(string clientId, string clientSecret)
     {
-        //
+        _clientId = clientId;
+        _clientSecret = clientSecret;
     }
 
     private async Task<string> UploadMedia_Initialize(string category, string mimeType, int fileSize)

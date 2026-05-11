@@ -18,6 +18,13 @@ public class AccountGroup : SlabMongoDocument
         set;
     }
 
+    // Kept for archival purposes.
+    public TwitterOAuth1Account? TwitterOAuth1
+    {
+        get;
+        set;
+    }
+
     public BlueskyAccount? Bluesky
     {
         get;

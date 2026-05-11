@@ -23,6 +23,7 @@ public class BbCoreApplication : SlabConsoleApplication
         appBuilder.RegisterMongo(b => b
             .AddCollection<AccountGroup>("accounts")
             .AddMigrator<AccountGroup, AccountGroupMigratorOneToTwo>()
+            .AddMigrator<AccountGroup, AccountGroupMigratorTwoToThree>()
             .AddCollection<MediaUploadJob>("media_jobs")
             .AddCollection<UploadedMedia>("media")
             .AddMigrator<UploadedMedia, UploadedMediaMigratorOneToTwo>()

@@ -184,7 +184,8 @@ public class PostThreadManager
             parentThread = _postThreadCollection.AsQueryable().FirstOrDefault(t => t._id == postThread.ParentThread)!;
         }
 
-        if (postThread.PostToTwitter && group.Twitter != null)
+        if (postThread.PostToTwitter && group.Twitter != null && !string.IsNullOrEmpty(_settings.TwitterClientId) &&
+            !string.IsNullOrEmpty(_settings.TwitterClientSecret))
         {
             _logger.LogInformation("Posting thread {id} to Twitter", postThread._id.ToString());
             
@@ -265,8 +266,7 @@ public class PostThreadManager
     private async Task PostToTwitter(PostThread postThread, PostThread? parentThread, TwitterAccount account,
         AttachmentCache attachmentCache)
     {
-        BbTwitterClient client = new BbTwitterClient(account.ConsumerKey, account.ConsumerSecret, account.AccessToken,
-            account.AccessTokenSecret);
+        TwitterClient client = new TwitterClient(_settings.TwitterClientId!, _settings.TwitterClientSecret!);
 
         string? previousId = parentThread?.Items.Last().TwitterId;
 

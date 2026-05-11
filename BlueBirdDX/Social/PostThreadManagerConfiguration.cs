@@ -18,5 +18,17 @@ public class PostThreadManagerConfiguration
     {
         get;
         set;
-    } = "http://bluebirddxwebapp";   
+    } = "http://bluebirddxwebapp";
+
+    public string? TwitterClientId
+    {
+        get;
+        set;
+    }
+
+    public string? TwitterClientSecret
+    {
+        get;
+        set;
+    }
 }
