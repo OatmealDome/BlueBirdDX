@@ -21,7 +21,8 @@
     </tr>
     </thead>
     <tbody>
-    @foreach (UploadedMedia media in Database.GetCollection<UploadedMedia>("media").AsQueryable())
+    @foreach (UploadedMedia media in Database.GetCollection<UploadedMedia>("media").AsQueryable()
+                  .OrderByDescending(m => m.CreationTime))
     {
         <tr>
             <td>@media.Name</td>
