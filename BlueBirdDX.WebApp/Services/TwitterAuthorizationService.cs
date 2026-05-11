@@ -30,8 +30,8 @@ public class TwitterAuthorizationService
 
         try
         {
-            string stateId = GenerateRandomString(256);
-            string verifier = GenerateRandomString(128);
+            string stateId = AuthorizationUtil.GenerateRandomString(256);
+            string verifier = AuthorizationUtil.GenerateRandomString(128);
 
             using HashAlgorithm shaAlgorithm = SHA256.Create();
             byte[] verifierHash = shaAlgorithm.ComputeHash(Encoding.UTF8.GetBytes(verifier));
@@ -96,11 +96,5 @@ public class TwitterAuthorizationService
         {
             _semaphoreSlim.Release();
         }
-    }
-
-    private string GenerateRandomString(int length)
-    {
-        const string characterPool = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-        return RandomNumberGenerator.GetString(characterPool, length);
     }
 }
