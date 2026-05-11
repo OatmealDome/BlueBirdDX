@@ -210,14 +210,26 @@ public class PostThreadApiController : ControllerBase
 
                 QuotedPost quotedPost = await QuotedPost.BuildInitialFromUrl(item.QuotedPost, _postThreadCollection);
 
-                if (inState.PostToTwitter && quotedPost.GetPrimaryPlatform() != SocialPlatform.Twitter)
+                if (inState.PostToTwitter)
                 {
                     int length = await _textWrapperClient.CountCharacters(item.Text);
 
-                    // We need 28 characters for the link to the external platform.
-                    if (length > 252)
+                    if (quotedPost.GetPrimaryPlatform() != SocialPlatform.Twitter)
                     {
-                        return "Cannot exceed 252 characters when quoting a post from another platform on Twitter";
+                        // We need 28 characters for the link to the external platform.
+                        if (length > 252)
+                        {
+                            return "Cannot exceed 252 characters when quoting a post from another platform on Twitter";
+                        }
+                    }
+                    else
+                    {
+                        // Twitter API anti-spam restrictions forbids us from quoting directly. We can still quote
+                        // by including the URL directly in the body, but this takes up characters.
+                        if (length > 256)
+                        {
+                            return "Cannot exceed 256 characters when quoting a post on Twitter";
+                        }
                     }
                 }
             }
