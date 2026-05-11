@@ -40,15 +40,66 @@ public class TwitterClient
         _httpClient.DefaultRequestHeaders.Add("User-Agent", $"BlueBirdDX/1.0.0");
     }
 
-    private async Task<HttpResponseMessage> SendRequest(HttpRequestMessage requestMessage)
+    private async Task<HttpResponseMessage> SendRequestToOAuth2Endpoint(string endpoint,
+        Dictionary<string, string> contentDict)
     {
+        using HttpRequestMessage requestMessage = new HttpRequestMessage(HttpMethod.Post, $"{ApiBaseUrl}{endpoint}");
+        requestMessage.Content = new FormUrlEncodedContent(contentDict);
+
+        string authHeaderContent = $"{_clientId}:{_clientSecret}";
+        string authHeaderContentEncoded = Convert.ToBase64String(Encoding.UTF8.GetBytes(authHeaderContent));
+        
+        requestMessage.Headers.Add("Authorization", $"Basic {authHeaderContentEncoded}");
+
         HttpResponseMessage responseMessage = await _httpClient.SendAsync(requestMessage);
 
         if (!responseMessage.IsSuccessStatusCode)
         {
             Uri requestUri = requestMessage.RequestUri!;
             HttpStatusCode httpStatus = responseMessage.StatusCode;
-            ApiErrorResponse? errorResponse = await responseMessage.Content.ReadFromJsonAsync<ApiErrorResponse>();
+            string json = await responseMessage.Content.ReadAsStringAsync();
+            ApiOAuthErrorResponse? errorResponse = JsonSerializer.Deserialize<ApiOAuthErrorResponse>(json);
+            
+            responseMessage.Dispose();
+
+            if (errorResponse == null)
+            {
+                throw new TwitterException($"OAuth request to {requestUri} returned {httpStatus}, no error content available");
+            }
+
+            throw new TwitterException(
+                $"OAuth request to {requestUri} returned {httpStatus} with error {errorResponse.Error} and description {errorResponse.Description}");
+        }
+
+        return responseMessage;
+    }
+
+    private async Task<HttpResponseMessage> SendRequestToNormalEndpoint(HttpMethod method, string endpoint,
+        HttpContent content)
+    {
+        if (AccessToken == null)
+        {
+            throw new TwitterException("Attempting to use authenticated API endpoint when unauthenticated");
+        }
+
+        if (AccessTokenExpiry == null || AccessTokenExpiry.Value < DateTime.UtcNow)
+        {
+            throw new TwitterException("Access token is expired");
+        }
+        
+        using HttpRequestMessage requestMessage = new HttpRequestMessage(method, $"{ApiBaseUrl}{endpoint}");
+        requestMessage.Content = content;
+        
+        requestMessage.Headers.Add("Authorization", $"Bearer {AccessToken}");
+        
+        HttpResponseMessage responseMessage = await _httpClient.SendAsync(requestMessage);
+
+        if (!responseMessage.IsSuccessStatusCode)
+        {
+            Uri requestUri = requestMessage.RequestUri!;
+            HttpStatusCode httpStatus = responseMessage.StatusCode;
+            string json = await responseMessage.Content.ReadAsStringAsync();
+            ApiErrorResponse? errorResponse = JsonSerializer.Deserialize<ApiErrorResponse>(json);
             
             responseMessage.Dispose();
 
@@ -62,20 +113,6 @@ public class TwitterClient
         }
 
         return responseMessage;
-    }
-
-    private async Task<HttpResponseMessage> SendRequestToOAuth2Endpoint(string endpoint,
-        Dictionary<string, string> contentDict)
-    {
-        using HttpRequestMessage requestMessage = new HttpRequestMessage(HttpMethod.Post, $"{ApiBaseUrl}{endpoint}");
-        requestMessage.Content = new FormUrlEncodedContent(contentDict);
-
-        string authHeaderContent = $"{_clientId}:{_clientSecret}";
-        string authHeaderContentEncoded = Convert.ToBase64String(Encoding.UTF8.GetBytes(authHeaderContent));
-        
-        requestMessage.Headers.Add("Authorization", $"Basic {authHeaderContentEncoded}");
-
-        return await SendRequest(requestMessage);
     }
 
     public async Task Login(string refreshToken)
