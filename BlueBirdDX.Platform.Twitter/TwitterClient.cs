@@ -312,7 +312,13 @@ public class TwitterClient
             Reply = tweetRequestReply,
             QuotedTweetId = quotedTweetId
         };
-        
-        throw new NotImplementedException();
+
+        using HttpResponseMessage responseMessage = await SendRequestToNormalEndpoint(HttpMethod.Post, "/tweets",
+            new StringContent(JsonSerializer.Serialize(tweetRequest), Encoding.UTF8, "application/json"));
+
+        TweetV2Response tweetResponse =
+            JsonSerializer.Deserialize<TweetV2Response>(await responseMessage.Content.ReadAsStringAsync())!;
+
+        return tweetResponse.InnerData.Id;
     }
 }
