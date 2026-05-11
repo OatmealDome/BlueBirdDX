@@ -94,7 +94,7 @@ public class AttachmentCache
 
     public async Task<string> GetMediaPreSignedUrl(ObjectId mediaId)
     {
-        return await _s3Service.GetPreSignedUrlForFile("media/" + mediaId.ToString(), HttpVerb.GET, 15);
+        return await _s3Service.GetPreSignedUrlForFile("media/" + mediaId.ToString(), HttpVerb.GET, 120);
     }
     
     public async Task AddMediaToCache(ObjectId mediaId)
