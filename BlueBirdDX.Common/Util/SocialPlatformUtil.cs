@@ -1,4 +1,4 @@
-namespace BlueBirdDX.Util;
+namespace BlueBirdDX.Common.Util;
 
 public static class SocialPlatformUtil
 {

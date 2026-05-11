@@ -1,7 +1,7 @@
 using Amazon.Runtime;
 using BlueBirdDX.Common.Media;
+using BlueBirdDX.Common.Util;
 using BlueBirdDX.Database;
-using BlueBirdDX.Util;
 using FFMpegCore;
 using FFMpegCore.Enums;
 using Microsoft.Extensions.Hosting;

@@ -5,7 +5,6 @@ using BlueBirdDX.Common.Util;
 using BlueBirdDX.Common.Util.TextWrapper;
 using BlueBirdDX.Database;
 using BlueBirdDX.Social.Twitter;
-using BlueBirdDX.Util;
 using Mastonet;
 using Mastonet.Entities;
 using Microsoft.Extensions.Logging;

@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using BlueBirdDX.Util;
+using BlueBirdDX.Common.Util;
 using OatmealDome.Airship.ATProtocol.Lexicon.Types;
 
 namespace BlueBirdDX.Social;
