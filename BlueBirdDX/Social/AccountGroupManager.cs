@@ -35,6 +35,14 @@ public class AccountGroupManager
         }
     }
 
+    public async Task UpdateTwitterRefreshTokenForGroup(AccountGroup group, string refreshToken)
+    {
+        await _accountGroupCollection.UpdateOneAsync(Builders<AccountGroup>.Filter.Eq(g => g._id, group._id),
+            Builders<AccountGroup>.Update.Set(g => g.Twitter!.RefreshToken, refreshToken));
+        
+        group.Twitter!.RefreshToken = refreshToken;
+    }
+
     public async Task RefreshThreadsTokens()
     {
         await _semaphoreSlim.WaitAsync();
