@@ -5,6 +5,7 @@ using System.Text;
 using Amazon.S3;
 using BlueBirdDX.Common.Media;
 using BlueBirdDX.Common.Post;
+using BlueBirdDX.Common.Social;
 using BlueBirdDX.Common.Util;
 using BlueBirdDX.Database;
 using MongoDB.Bson;
@@ -175,7 +176,7 @@ public class AttachmentCache
             if (postThreadItem != null)
             {
                 quotedPost.BlueskyRef = postThreadItem.BlueskyThisRef != null
-                    ? new StrongRef(postThreadItem.BlueskyThisRef.Uri, postThreadItem.BlueskyThisRef.Cid)
+                    ? new BlueskyRef(postThreadItem.BlueskyThisRef.Uri, postThreadItem.BlueskyThisRef.Cid)
                     : null;
                 quotedPost.MastodonId = postThreadItem.MastodonId;
                 quotedPost.ThreadsId = postThreadItem.ThreadsId;
@@ -193,7 +194,7 @@ public class AttachmentCache
             BlueskyClient client = new BlueskyClient();
             ATReturnedRecord<Post> returnedRecord = await client.Post_Get(repo, key);
 
-            quotedPost.BlueskyRef = returnedRecord.Ref;
+            quotedPost.BlueskyRef = new BlueskyRef(returnedRecord.Ref.Uri, returnedRecord.Ref.Cid);
 
             PostThreadItem? postThreadItem = _postThreadCollection.AsQueryable().SelectMany(t => t.Items)
                 .FirstOrDefault(i => i.BlueskyThisRef != null && i.BlueskyThisRef.Uri == quotedPost.BlueskyRef.Uri);

@@ -1,6 +1,7 @@
 using System.Text;
 using BlueBirdDX.Common.Account;
 using BlueBirdDX.Common.Post;
+using BlueBirdDX.Common.Social;
 using BlueBirdDX.Common.Util;
 using BlueBirdDX.Common.Util.TextWrapper;
 using BlueBirdDX.Database;
@@ -468,7 +469,7 @@ public class PostThreadManager
                 
                 if (quotedPost.BlueskyRef != null)
                 {
-                    quotedRef = quotedPost.BlueskyRef;
+                    quotedRef = BbCommonRefToAirshipRef(quotedPost.BlueskyRef);
                 }
                 else
                 {

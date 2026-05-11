@@ -1,8 +1,7 @@
 using System.Diagnostics;
 using BlueBirdDX.Common.Util;
-using OatmealDome.Airship.ATProtocol.Lexicon.Types;
 
-namespace BlueBirdDX.Social;
+namespace BlueBirdDX.Common.Social;
 
 public class QuotedPost
 {
@@ -12,7 +11,7 @@ public class QuotedPost
         set;
     }
 
-    public StrongRef? BlueskyRef
+    public BlueskyRef? BlueskyRef
     {
         get;
         set;
