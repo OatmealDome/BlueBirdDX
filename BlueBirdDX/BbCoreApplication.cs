@@ -24,6 +24,7 @@ public class BbCoreApplication : SlabConsoleApplication
             .AddCollection<AccountGroup>("accounts")
             .AddMigrator<AccountGroup, AccountGroupMigratorOneToTwo>()
             .AddMigrator<AccountGroup, AccountGroupMigratorTwoToThree>()
+            .AddMigrator<AccountGroup, AccountGroupMigratorThreeToFour>()
             .AddCollection<MediaUploadJob>("media_jobs")
             .AddCollection<UploadedMedia>("media")
             .AddMigrator<UploadedMedia, UploadedMediaMigratorOneToTwo>()
