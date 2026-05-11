@@ -1,0 +1,9 @@
+@page "/account/twitter/callback"
+@model AccountTwitterCallback
+@{
+    ViewData["Title"] = "Authorize Twitter Callback";
+}
+
+<h1>Authorization Result</h1>
+
+<p>@Model.AuthorizationResult</p>
