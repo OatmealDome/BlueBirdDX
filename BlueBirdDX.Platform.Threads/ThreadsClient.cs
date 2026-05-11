@@ -163,6 +163,31 @@ public class ThreadsClient
         {
             scopeStrings.Add("threads_manage_insights");
         }
+
+        if ((permissions & ThreadsPermission.Delete) != 0)
+        {
+            scopeStrings.Add("threads_delete");
+        }
+
+        if ((permissions & ThreadsPermission.KeywordSearch) != 0)
+        {
+            scopeStrings.Add("threads_keyword_search");
+        }
+
+        if ((permissions & ThreadsPermission.LocationTagging) != 0)
+        {
+            scopeStrings.Add("threads_location_tagging");
+        }
+
+        if ((permissions & ThreadsPermission.ManageMentions) != 0)
+        {
+            scopeStrings.Add("threads_manage_mentions");
+        }
+
+        if ((permissions & ThreadsPermission.ProfileDiscovery) != 0)
+        {
+            scopeStrings.Add("threads_profile_discovery");
+        }
         
         Dictionary<string, string> parameters = new Dictionary<string, string>();
         

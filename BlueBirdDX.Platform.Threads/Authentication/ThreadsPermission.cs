@@ -7,5 +7,10 @@ public enum ThreadsPermission
     ContentPublish = 2,
     ManageReplies = 4,
     ReadReplies = 8,
-    ManageInsights = 16
+    ManageInsights = 16,
+    Delete = 32,
+    KeywordSearch = 64,
+    LocationTagging = 128,
+    ManageMentions = 256,
+    ProfileDiscovery = 512
 }
