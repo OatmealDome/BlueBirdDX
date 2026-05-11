@@ -1,0 +1,16 @@
+@page "/account/threads/callback"
+@model AccountThreadsCallback
+@{
+    ViewData["Title"] = "Authorize Threads Callback";
+}
+
+<h1>Authorization Result</h1>
+
+@if (@Model.AuthorizationResult != "OK")
+{
+    <pre><code>@Model.AuthorizationResult</code></pre>
+}
+else
+{
+    <p>OK</p>
+}
