@@ -631,8 +631,8 @@ public class PostThreadManager
                 };
             }
 
-            item.BlueskyRootRef = AirshipRefToBbCommonRef(rootPost);
-            item.BlueskyThisRef = AirshipRefToBbCommonRef(previousPost);
+            item.BlueskyRootRef = AirshipRefToBbCommonRef(rootPost!);
+            item.BlueskyThisRef = AirshipRefToBbCommonRef(previousPost!);
         }
 
         await client.Server_DeleteSession();
