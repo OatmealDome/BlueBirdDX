@@ -71,7 +71,7 @@
         <label for="parentSelect" class="form-label">Parent Thread</label>
         <select id="parentSelect" class="form-select">
             <option value="none">(none)</option>
-            @foreach (PostThread thread in Model.PostThreadCollection.AsQueryable().Where(t => t.State == PostThreadState.Sent))
+            @foreach (PostThread thread in Model.SentThreads)
             {
                 <option value="@thread._id.ToString()">@thread.Name</option>
             }

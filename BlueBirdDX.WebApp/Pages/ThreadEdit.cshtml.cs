@@ -3,6 +3,7 @@ using BlueBirdDX.Common.Post;
 using BlueBirdDX.Api;
 using BlueBirdDX.Common.Account;
 using BlueBirdDX.WebApp.Api;
+using idunno.Bluesky;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using MongoDB.Bson;
@@ -35,11 +36,20 @@ public class ThreadEditModel : PageModel
         set;
     }
 
+    public List<PostThread> SentThreads
+    {
+        get;
+        private set;
+    }
+
     public ThreadEditModel(SlabMongoService mongoService)
     {
         PostThreadCollection = mongoService.GetCollection<PostThread>("threads");
         AccountGroupCollection = mongoService.GetCollection<AccountGroup>("accounts");
         _uploadedMediaCollection = mongoService.GetCollection<UploadedMedia>("media");
+
+        SentThreads = PostThreadCollection.AsQueryable().Where(t => t.State == PostThreadState.Sent).ToList();
+        SentThreads.Reverse();
     }
 
     public IActionResult OnGet(string threadId, [FromQuery] string? baseThreadId = null)
