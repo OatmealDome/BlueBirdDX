@@ -233,39 +233,68 @@ public class TwitterClient
             new StringContent(JsonSerializer.Serialize(metadataRequest), Encoding.UTF8, "application/json"));
     }
 
+    private async Task<string> UploadMedia_SingleShot(string category, string mimeType, byte[] data)
+    {
+        MultipartFormDataContent content = new MultipartFormDataContent();
+        content.Add(new ByteArrayContent(data), "media", "data.bin");
+        content.Add(new StringContent(category), "media_category");
+        content.Add(new StringContent(mimeType), "media_type");
+
+        using HttpResponseMessage responseMessage =
+            await SendRequestToNormalEndpoint(HttpMethod.Post, $"/media/upload", content);
+
+        MediaV2UploadSingleShotResponse statusResponse =
+            JsonSerializer.Deserialize<MediaV2UploadSingleShotResponse>(
+                await responseMessage.Content.ReadAsStringAsync())!;
+
+        return statusResponse.InnerData.Id;
+    }
+
     private async Task<string> UploadMedia(string category, string mimeType, byte[] data, string? altText = null)
     {
-        string mediaId = await UploadMedia_Initialize(category, mimeType, data.Length);
+        string mediaId;
         
-        using Stream memoryStream = new MemoryStream(data);
+        const int chunkSize = 1048576 * 4; // 4 MiB (the maximum chunk size is 5 MiB, but we're leaving a margin)
 
-        const int bufSize = 1048576 * 4; // 4 MiB (the maximum chunk size is 5 MiB, but we're leaving a margin)
-        byte[] buf = new byte[bufSize];
-        
-        int readLength = 0;
-        
-        int segment = 0;
-        
-        while ((readLength = memoryStream.Read(buf)) > 0)
+        // Use multipart upload for videos or large images.
+        // For small images, we can save API calls by using the single-shot upload API.
+        if (category.Contains("video") || data.Length > chunkSize)
         {
-            byte[] segmentData;
+            mediaId = await UploadMedia_Initialize(category, mimeType, data.Length);
+        
+            using Stream memoryStream = new MemoryStream(data);
 
-            if (readLength == bufSize)
+            byte[] buf = new byte[chunkSize];
+        
+            int readLength = 0;
+        
+            int segment = 0;
+        
+            while ((readLength = memoryStream.Read(buf)) > 0)
             {
-                segmentData = buf;
-            }
-            else
-            {
-                segmentData = new byte[readLength];
-                Array.Copy(buf, segmentData, readLength);
-            }
+                byte[] segmentData;
+
+                if (readLength == chunkSize)
+                {
+                    segmentData = buf;
+                }
+                else
+                {
+                    segmentData = new byte[readLength];
+                    Array.Copy(buf, segmentData, readLength);
+                }
             
-            await UploadMedia_Append(mediaId, segment, segmentData);
+                await UploadMedia_Append(mediaId, segment, segmentData);
             
-            segment++;
+                segment++;
+            }
+
+            await UploadMedia_Finalize(mediaId);
         }
-
-        await UploadMedia_Finalize(mediaId);
+        else
+        {
+            mediaId = await UploadMedia_SingleShot(category, mimeType, data);
+        }
 
         if (category.Contains("video"))
         {
