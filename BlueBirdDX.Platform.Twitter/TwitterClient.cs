@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 
 namespace BlueBirdDX.Platform.Twitter;
 
@@ -39,6 +40,30 @@ public class TwitterClient
         _httpClient.DefaultRequestHeaders.Add("User-Agent", $"BlueBirdDX/1.0.0");
     }
 
+    private async Task<HttpResponseMessage> SendRequest(HttpRequestMessage requestMessage)
+    {
+        HttpResponseMessage responseMessage = await _httpClient.SendAsync(requestMessage);
+
+        if (!responseMessage.IsSuccessStatusCode)
+        {
+            Uri requestUri = requestMessage.RequestUri!;
+            HttpStatusCode httpStatus = responseMessage.StatusCode;
+            ApiErrorResponse? errorResponse = await responseMessage.Content.ReadFromJsonAsync<ApiErrorResponse>();
+            
+            responseMessage.Dispose();
+
+            if (errorResponse == null)
+            {
+                throw new TwitterException($"{requestUri} returned {httpStatus}, no error content available");
+            }
+
+            throw new TwitterException(
+                $"{requestUri} returned {httpStatus} with error {errorResponse.Title} and detail {errorResponse.Detail}");
+        }
+
+        return responseMessage;
+    }
+
     private async Task<HttpResponseMessage> SendRequestToOAuth2Endpoint(string endpoint,
         Dictionary<string, string> contentDict)
     {
@@ -49,20 +74,8 @@ public class TwitterClient
         string authHeaderContentEncoded = Convert.ToBase64String(Encoding.UTF8.GetBytes(authHeaderContent));
         
         requestMessage.Headers.Add("Authorization", $"Basic {authHeaderContentEncoded}");
-        
-        HttpResponseMessage responseMessage = await _httpClient.SendAsync(requestMessage);
 
-        if (!responseMessage.IsSuccessStatusCode)
-        {
-            HttpStatusCode httpStatus = responseMessage.StatusCode;
-            string errorContent = await responseMessage.Content.ReadAsStringAsync();
-
-            responseMessage.Dispose();
-
-            throw new TwitterException($"OAuth2 request failure, received {httpStatus} with content {errorContent}");
-        }
-
-        return responseMessage;
+        return await SendRequest(requestMessage);
     }
 
     public async Task Login(string refreshToken)
@@ -244,7 +257,7 @@ public class TwitterClient
             Reply = tweetRequestReply,
             QuotedTweetId = quotedTweetId
         };
-
+        
         throw new NotImplementedException();
     }
 }
