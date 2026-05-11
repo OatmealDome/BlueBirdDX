@@ -1,14 +1,103 @@
+using System.Net;
+using System.Net.Http.Json;
+using System.Text;
+
 namespace BlueBirdDX.Platform.Twitter;
 
 public class TwitterClient
 {
+    private const string ApiBaseUrl = "https://api.x.com/2";
+
     private readonly string _clientId;
     private readonly string _clientSecret;
+    private readonly HttpClient _httpClient;
+
+    public string? RefreshToken
+    {
+        get;
+        private set;
+    }
+    
+    public string? AccessToken
+    {
+        get;
+        private set;
+    }
+
+    public DateTime? AccessTokenExpiry
+    {
+        get;
+        private set;
+    }
 
     public TwitterClient(string clientId, string clientSecret)
     {
         _clientId = clientId;
         _clientSecret = clientSecret;
+        
+        _httpClient = new HttpClient();
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", $"BlueBirdDX/1.0.0");
+    }
+
+    private async Task<HttpResponseMessage> SendRequestToOAuth2Endpoint(string endpoint,
+        Dictionary<string, string> contentDict)
+    {
+        using HttpRequestMessage requestMessage = new HttpRequestMessage(HttpMethod.Post, $"{ApiBaseUrl}{endpoint}");
+        requestMessage.Content = new FormUrlEncodedContent(contentDict);
+
+        string authHeaderContent = $"{_clientId}:{_clientSecret}";
+        string authHeaderContentEncoded = Convert.ToBase64String(Encoding.UTF8.GetBytes(authHeaderContent));
+        
+        requestMessage.Headers.Add("Authorization", $"Basic {authHeaderContentEncoded}");
+        
+        HttpResponseMessage responseMessage = await _httpClient.SendAsync(requestMessage);
+
+        if (!responseMessage.IsSuccessStatusCode)
+        {
+            HttpStatusCode httpStatus = responseMessage.StatusCode;
+            string errorContent = await responseMessage.Content.ReadAsStringAsync();
+
+            responseMessage.Dispose();
+
+            throw new TwitterException($"OAuth2 request failure, received {httpStatus} with content {errorContent}");
+        }
+
+        return responseMessage;
+    }
+
+    public async Task Login(string refreshToken)
+    {
+        RefreshToken = refreshToken;
+        
+        Dictionary<string, string> urlParameters = new Dictionary<string, string>()
+        {
+            { "refresh_token", RefreshToken },
+            { "grant_type", "refresh_token" },
+        };
+        
+        using HttpResponseMessage responseMessage = await SendRequestToOAuth2Endpoint("/oauth2/token", urlParameters);
+
+        OAuth2TokenResponse tokenResponse = (await responseMessage.Content.ReadFromJsonAsync<OAuth2TokenResponse>())!;
+        AccessToken = tokenResponse.AccessToken;
+        AccessTokenExpiry = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresIn);
+    }
+
+    public async Task LoginWithCodeAndVerifier(string code, string verifier, string redirectUrl)
+    {
+        Dictionary<string, string> urlParameters = new Dictionary<string, string>()
+        {
+            { "code", code },
+            { "grant_type", "authorization_code" },
+            { "redirect_uri", redirectUrl },
+            { "code_verifier", verifier },
+        };
+        
+        using HttpResponseMessage responseMessage = await SendRequestToOAuth2Endpoint("/oauth2/token", urlParameters);
+
+        OAuth2TokenResponse tokenResponse = (await responseMessage.Content.ReadFromJsonAsync<OAuth2TokenResponse>())!;
+        AccessToken = tokenResponse.AccessToken;
+        AccessTokenExpiry = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresIn);
+        RefreshToken = tokenResponse.RefreshToken;
     }
 
     private async Task<string> UploadMedia_Initialize(string category, string mimeType, int fileSize)

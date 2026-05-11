@@ -267,6 +267,7 @@ public class PostThreadManager
         AttachmentCache attachmentCache)
     {
         TwitterClient client = new TwitterClient(_settings.TwitterClientId!, _settings.TwitterClientSecret!);
+        await client.Login(account.RefreshToken);
 
         string? previousId = parentThread?.Items.Last().TwitterId;
 
