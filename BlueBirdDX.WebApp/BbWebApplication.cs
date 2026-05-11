@@ -32,6 +32,9 @@ public class BbWebApplication : SlabWebApplication
         appBuilder.RegisterConfiguration<NotificationSettings>("Notifications");
         appBuilder.RegisterSingleton<NotificationService>();
         
+        appBuilder.RegisterConfiguration<TwitterAuthorizationSettings>("TwitterAuthorization");
+        appBuilder.RegisterSingleton<TwitterAuthorizationService>();
+        
         appBuilder.RegisterConfiguration<DatabaseSettings>("Database");
     }
 
