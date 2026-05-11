@@ -298,8 +298,8 @@ public class PostThreadManager
                 }
                 else
                 {
-                    string quoteMediaId =
-                        await client.UploadImage(quotedPost.ImageData, "image/png", DifferentPlatformQuoteImageAltText);
+                    string quoteMediaId = await client.UploadImage(quotedPost.ImageData!, "image/png",
+                        DifferentPlatformQuoteImageAltText);
                     
                     uploadedMediaIds.Add(quoteMediaId);
                     
@@ -473,7 +473,7 @@ public class PostThreadManager
                 }
                 else
                 {
-                    byte[] quotedPostData = quotedPost.ImageData;
+                    byte[] quotedPostData = quotedPost.ImageData!;
                 
                     await _retryResiliencePipeline.ExecuteAsync(async (_) =>
                     {
@@ -666,7 +666,7 @@ public class PostThreadManager
             {
                 QuotedPost quotedPost = attachmentCache.GetQuotedPost(item.QuotedPost);
 
-                byte[] quotedPostData = quotedPost.ImageData;
+                byte[] quotedPostData = quotedPost.ImageData!;
                 
                 using MemoryStream quotedPostStream = new MemoryStream(quotedPostData);
 
@@ -768,7 +768,7 @@ public class PostThreadManager
                 }
                 else
                 {
-                    attachments.Add((quotedPost.ImageUrl, "image/png", DifferentPlatformQuoteImageAltText));
+                    attachments.Add((quotedPost.ImageUrl!, "image/png", DifferentPlatformQuoteImageAltText));
                     
                     if (text != "")
                     {

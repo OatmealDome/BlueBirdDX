@@ -29,13 +29,13 @@ public class QuotedPost
         set;
     }
 
-    public byte[] ImageData
+    public byte[]? ImageData
     {
         get;
         set;
     }
 
-    public string ImageUrl
+    public string? ImageUrl
     {
         get;
         set;
