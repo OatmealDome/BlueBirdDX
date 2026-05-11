@@ -13,4 +13,16 @@ public class SocialAppConfiguration
         get;
         set;
     }
+    
+    public ulong? ThreadsAppId
+    {
+        get;
+        set;
+    }
+
+    public string? ThreadsAppSecret
+    {
+        get;
+        set;
+    }
 }

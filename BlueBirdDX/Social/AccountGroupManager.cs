@@ -1,6 +1,7 @@
 using BlueBirdDX.Common.Account;
 using BlueBirdDX.Database;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using OatmealDome.Slab.Mongo;
@@ -12,15 +13,18 @@ namespace BlueBirdDX.Social;
 public class AccountGroupManager
 {
     private readonly ILogger<AccountGroupManager> _logger;
+    private readonly SocialAppConfiguration _socialSettings;
     private readonly IMongoCollection<AccountGroup> _accountGroupCollection;
     private readonly SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1, 1);
 
-    public AccountGroupManager(ILogger<AccountGroupManager> logger, SlabMongoService mongoService)
+    public AccountGroupManager(ILogger<AccountGroupManager> logger, IOptions<SocialAppConfiguration> socialSettings,
+        SlabMongoService mongoService)
     {
         _logger = logger;
+        _socialSettings = socialSettings.Value;
         _accountGroupCollection = mongoService.GetCollection<AccountGroup>("accounts");
     }
-    
+
     public AccountGroup GetAccountGroup(ObjectId id)
     {
         _semaphoreSlim.Wait();
@@ -68,16 +72,17 @@ public class AccountGroupManager
                 
                 _logger.LogInformation("Refreshing Threads token for account group {groupId}", group._id);
 
-                ThreadsClient client = new ThreadsClient(account.ClientId, account.ClientSecret)
-                {
-                    Credentials = new ThreadsCredentials()
+                ThreadsClient client =
+                    new ThreadsClient(_socialSettings.ThreadsAppId!.Value, _socialSettings.ThreadsAppSecret!)
                     {
-                        CredentialType = ThreadsCredentialType.LongLived,
-                        AccessToken = account.AccessToken,
-                        Expiry = account.Expiry,
-                        UserId = account.UserId
-                    }
-                };
+                        Credentials = new ThreadsCredentials()
+                        {
+                            CredentialType = ThreadsCredentialType.LongLived,
+                            AccessToken = account.AccessToken,
+                            Expiry = account.Expiry,
+                            UserId = account.UserId
+                        }
+                    };
                 
                 ThreadsCredentials credentials = await client.Auth_RefreshLongLivedAccessToken();
 

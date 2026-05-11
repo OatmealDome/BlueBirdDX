@@ -1,7 +1,19 @@
 namespace BlueBirdDX.Common.Account;
 
-public class ThreadsAccount
+public class ThreadsLegacyAccount
 {
+    public ulong ClientId
+    {
+        get;
+        set;
+    }
+
+    public string ClientSecret
+    {
+        get;
+        set;
+    }
+    
     public string AccessToken
     {
         get;
@@ -20,7 +32,7 @@ public class ThreadsAccount
         set;
     }
 
-    public ThreadsAccount()
+    public ThreadsLegacyAccount()
     {
         //
     }

@@ -4,7 +4,7 @@ namespace BlueBirdDX.Common.Account;
 
 public class AccountGroup : SlabMongoDocument
 {
-    public const int LatestSchemaVersion = 3;
+    public const int LatestSchemaVersion = 4;
 
     public string Name
     {
@@ -38,6 +38,12 @@ public class AccountGroup : SlabMongoDocument
     }
 
     public ThreadsAccount? Threads
+    {
+        get;
+        set;
+    }
+    
+    public ThreadsLegacyAccount? ThreadsLegacy
     {
         get;
         set;

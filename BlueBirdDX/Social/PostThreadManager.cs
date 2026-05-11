@@ -635,7 +635,7 @@ public class PostThreadManager
     private async Task PostToThreads(PostThread postThread, PostThread? parentThread, ThreadsAccount account,
         AttachmentCache attachmentCache)
     {
-        ThreadsClient client = new ThreadsClient(account.ClientId, account.ClientSecret)
+        ThreadsClient client = new ThreadsClient(_socialSettings.ThreadsAppId!.Value, _socialSettings.ThreadsAppSecret!)
         {
             Credentials = new ThreadsCredentials()
             {
