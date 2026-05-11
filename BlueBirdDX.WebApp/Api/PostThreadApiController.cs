@@ -2,6 +2,10 @@ using BlueBirdDX.Common.Account;
 using BlueBirdDX.Common.Media;
 using BlueBirdDX.Common.Post;
 using BlueBirdDX.Api;
+using BlueBirdDX.Common.Social;
+using BlueBirdDX.Common.Util;
+using BlueBirdDX.Common.Util.TextWrapper;
+using BlueBirdDX.WebApp.Services;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -18,12 +22,14 @@ public class PostThreadApiController : ControllerBase
     private readonly IMongoCollection<PostThread> _postThreadCollection;
     private readonly IMongoCollection<AccountGroup> _accountGroupCollection;
     private readonly IMongoCollection<UploadedMedia> _uploadedMediaCollection;
+    private readonly TextWrapperClient  _textWrapperClient;
 
-    public PostThreadApiController(SlabMongoService mongoService)
+    public PostThreadApiController(SlabMongoService mongoService, TextWrapperService textWrapperService)
     {
         _postThreadCollection = mongoService.GetCollection<PostThread>("threads");
         _accountGroupCollection = mongoService.GetCollection<AccountGroup>("accounts");
         _uploadedMediaCollection = mongoService.GetCollection<UploadedMedia>("media");
+        _textWrapperClient =  textWrapperService.Client;
     }
 
     [HttpGet]
@@ -48,7 +54,7 @@ public class PostThreadApiController : ControllerBase
         return Ok(PostThreadApiExtensions.CreateApiFromCommon(postThread));
     }
 
-    private string? ValidateIncomingThreadAndGetError(PostThreadApi inState)
+    private async Task<string?> ValidateIncomingThreadAndGetError(PostThreadApi inState)
     {
         if (!ObjectId.TryParse(inState.TargetGroup, out ObjectId groupId))
         {
@@ -201,6 +207,19 @@ public class PostThreadApiController : ControllerBase
                 }
 
                 // TODO url format enforcement regex
+
+                QuotedPost quotedPost = await QuotedPost.BuildInitialFromUrl(item.QuotedPost, _postThreadCollection);
+
+                if (inState.PostToTwitter && quotedPost.GetPrimaryPlatform() != SocialPlatform.Twitter)
+                {
+                    int length = await _textWrapperClient.CountCharacters(item.Text);
+
+                    // We need 28 characters for the link to the external platform.
+                    if (length > 252)
+                    {
+                        return "Cannot exceed 252 characters when quoting a post from another platform on Twitter";
+                    }
+                }
             }
 
             int attachmentCount = item.AttachedMedia.Count + (item.QuotedPost != null ? 1 : 0);
@@ -233,9 +252,9 @@ public class PostThreadApiController : ControllerBase
     [Route("/api/v1/thread")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public IActionResult PostPostThread(PostThreadApi postThreadApi)
+    public async Task<IActionResult> PostPostThread(PostThreadApi postThreadApi)
     {
-        string? error = ValidateIncomingThreadAndGetError(postThreadApi);
+        string? error = await ValidateIncomingThreadAndGetError(postThreadApi);
         if (error != null)
         {
             return Problem(error, statusCode: 400);
@@ -254,7 +273,7 @@ public class PostThreadApiController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public IActionResult PutPostThread(string threadId, PostThreadApi postThreadApi)
+    public async Task<IActionResult> PutPostThread(string threadId, PostThreadApi postThreadApi)
     {
         if (!ObjectId.TryParse(threadId, out ObjectId threadIdObj))
         {
@@ -273,7 +292,7 @@ public class PostThreadApiController : ControllerBase
             return Problem("Thread is already in Sent or Error state", statusCode: 400);
         }
         
-        string? error = ValidateIncomingThreadAndGetError(postThreadApi);
+        string? error = await ValidateIncomingThreadAndGetError(postThreadApi);
         if (error != null)
         {
             return Problem(error, statusCode: 400);
