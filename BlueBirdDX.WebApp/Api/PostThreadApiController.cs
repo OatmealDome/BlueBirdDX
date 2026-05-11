@@ -48,66 +48,57 @@ public class PostThreadApiController : ControllerBase
         return Ok(PostThreadApiExtensions.CreateApiFromCommon(postThread));
     }
 
-    private bool IsIncomingThreadSane(PostThreadApi inState, out string? error)
+    private string? ValidateIncomingThreadAndGetError(PostThreadApi inState)
     {
         if (!ObjectId.TryParse(inState.TargetGroup, out ObjectId groupId))
         {
-            error = "Invalid account group ID";
-            return false;
+            return "Invalid account group ID";
         }
 
         AccountGroup? group = _accountGroupCollection.AsQueryable().FirstOrDefault(g => g._id == groupId);
 
         if (group == null)
         {
-            error = "Invalid account group ID";
-            return false;
+            return "Invalid account group ID";
         }
 
         if (inState.PostToTwitter && group.Twitter == null)
         {
-            error = "Twitter account does not exist in this group";
-            return false;
+            return "Twitter account does not exist in this group";
         }
-        
+
         if (inState.PostToBluesky && group.Bluesky == null)
         {
-            error = "Bluesky account does not exist in this group";
-            return false;
+            return "Bluesky account does not exist in this group";
         }
-        
+
         if (inState.PostToMastodon && group.Mastodon == null)
         {
-            error = "Mastodon account does not exist in this group";
-            return false;
+            return "Mastodon account does not exist in this group";
         }
-        
+
         if (inState.PostToThreads && group.Threads == null)
         {
-            error = "Threads account does not exist in this group";
-            return false;
+            return "Threads account does not exist in this group";
         }
-        
+
         if (inState.ParentThread != null)
         {
             if (!ObjectId.TryParse(inState.ParentThread, out ObjectId parentId))
             {
-                error = "Invalid parent thread ID";
-                return false;
+                return "Invalid parent thread ID";
             }
 
             PostThread? parentThread = _postThreadCollection.AsQueryable().FirstOrDefault(t => t._id == parentId);
 
             if (parentThread == null)
             {
-                error = "Invalid parent thread ID";
-                return false;
+                return "Invalid parent thread ID";
             }
 
             if (parentThread.State != PostThreadState.Sent)
             {
-                error = "Parent thread not in Sent state";
-                return false;
+                return "Parent thread not in Sent state";
             }
 
             PostThreadItem lastParentItem = parentThread.Items.Last();
@@ -116,79 +107,68 @@ public class PostThreadApiController : ControllerBase
             {
                 if (!parentThread.PostToTwitter)
                 {
-                    error = "Parent thread not posted to Twitter";
-                    return false;
+                    return "Parent thread not posted to Twitter";
                 }
 
                 if (lastParentItem.TwitterId == null)
                 {
-                    error = "Final item in parent thread has no tweet ID";
-                    return false;
+                    return "Final item in parent thread has no tweet ID";
                 }
             }
-            
+
             if (inState.PostToBluesky)
             {
                 if (!parentThread.PostToBluesky)
                 {
-                    error = "Parent thread not posted to Bluesky";
-                    return false;
+                    return "Parent thread not posted to Bluesky";
                 }
-                
+
                 if (lastParentItem.BlueskyRootRef == null || lastParentItem.BlueskyThisRef == null)
                 {
-                    error = "Final item in parent thread has no Bluesky post reference(s)";
-                    return false;
+                    return "Final item in parent thread has no Bluesky post reference(s)";
                 }
             }
-            
+
             if (inState.PostToMastodon)
             {
                 if (!parentThread.PostToMastodon)
                 {
-                    error = "Parent thread not posted to Mastodon";
-                    return false;
+                    return "Parent thread not posted to Mastodon";
                 }
-                
+
                 if (lastParentItem.MastodonId == null)
                 {
-                    error = "Final item in parent thread has no Mastodon status ID";
-                    return false;
+                    return "Final item in parent thread has no Mastodon status ID";
                 }
             }
-            
+
             if (inState.PostToThreads)
             {
                 if (!parentThread.PostToThreads)
                 {
-                    error = "Parent thread not posted to Threads";
-                    return false;
+                    return "Parent thread not posted to Threads";
                 }
-                
+
                 if (lastParentItem.ThreadsId == null)
                 {
-                    error = "Final item in parent thread has no Threads media container ID";
-                    return false;
+                    return "Final item in parent thread has no Threads media container ID";
                 }
             }
         }
-        
+
         if (inState.ScheduledTime.Kind != DateTimeKind.Utc)
         {
-            error = "Scheduled time is not in UTC";
-            return false;
+            return "Scheduled time is not in UTC";
         }
 
         if (inState.State == (int)PostThreadState.Sent || inState.State == (int)PostThreadState.Error)
         {
-            error = "Invalid thread state";
-            return false;
+            return "Invalid thread state";
         }
-        
+
         if (inState.Name.Length == 0)
         {
-            error = "Name is empty";
-            return false;
+            return "Name is empty";
         }
 
         if (inState.State == (int)PostThreadState.Enqueued && DateTime.UtcNow > inState.ScheduledTime)
@@ -197,15 +177,13 @@ public class PostThreadApiController : ControllerBase
 
             if (span.TotalMinutes > 4.0d)
             {
-                error = "Scheduled time is too far in the past";
-                return false;   
+                return "Scheduled time is too far in the past";
             }
         }
 
         if (inState.Items.Count == 0)
         {
-            error = "Thread has no items";
-            return false;
+            return "Thread has no items";
         }
 
         foreach (PostThreadItemApi item in inState.Items)
@@ -214,48 +192,41 @@ public class PostThreadApiController : ControllerBase
             {
                 if (!Uri.TryCreate(item.QuotedPost, UriKind.Absolute, out Uri? uri))
                 {
-                    error = "Invalid quoted post URL";
-                    return false;
+                    return "Invalid quoted post URL";
                 }
-                
+
                 if (uri.Host != "twitter.com" && uri.Host != "x.com" && uri.Host != "bsky.app")
                 {
-                    error = "Quoted post URL is not a Twitter or Bluesky URL";
-                    return false;
+                    return "Quoted post URL is not a Twitter or Bluesky URL";
                 }
-                
+
                 // TODO url format enforcement regex
             }
-            
+
             int attachmentCount = item.AttachedMedia.Count + (item.QuotedPost != null ? 1 : 0);
 
             if (attachmentCount > 4)
             {
-                error = "Thread has too many attachments";
-                return false;
+                return "Thread has too many attachments";
             }
-            
+
             foreach (string mediaId in item.AttachedMedia)
             {
                 if (!ObjectId.TryParse(mediaId, out ObjectId mediaIdObj))
                 {
-                    error = "Invalid media ID";
-                    return false;
+                    return "Invalid media ID";
                 }
 
                 UploadedMedia? media = _uploadedMediaCollection.AsQueryable().FirstOrDefault(m => m._id == mediaIdObj);
 
                 if (media == null)
                 {
-                    error = "Invalid media ID";
-                    return false;
+                    return "Invalid media ID";
                 }
             }
         }
 
-        error = null;
-
-        return true;
+        return null;
     }
     
     [HttpPost]
@@ -264,11 +235,12 @@ public class PostThreadApiController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public IActionResult PostPostThread(PostThreadApi postThreadApi)
     {
-        if (!IsIncomingThreadSane(postThreadApi, out string? error))
+        string? error = ValidateIncomingThreadAndGetError(postThreadApi);
+        if (error != null)
         {
             return Problem(error, statusCode: 400);
         }
-        
+
         PostThread postThread = new PostThread();
         postThreadApi.TransferApiToCommon(postThread);
         
@@ -301,11 +273,12 @@ public class PostThreadApiController : ControllerBase
             return Problem("Thread is already in Sent or Error state", statusCode: 400);
         }
         
-        if (!IsIncomingThreadSane(postThreadApi, out string? error))
+        string? error = ValidateIncomingThreadAndGetError(postThreadApi);
+        if (error != null)
         {
             return Problem(error, statusCode: 400);
         }
-        
+
         postThreadApi.TransferApiToCommon(postThread);
 
         _postThreadCollection.ReplaceOne(Builders<PostThread>.Filter.Eq(p => p._id, postThread._id), postThread);
