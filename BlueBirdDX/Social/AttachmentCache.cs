@@ -153,63 +153,9 @@ public class AttachmentCache
 
     public async Task<QuotedPost> AddQuotedPostToCache(string url)
     {
-        Uri uri = new Uri(url);
-
-        QuotedPost quotedPost = new QuotedPost();
+        QuotedPost quotedPost = await QuotedPost.BuildInitialFromUrl(url, _postThreadCollection);
         
         _quotedPosts[url] = quotedPost;
-        
-        if (uri.Host == "x.com" || uri.Host == "twitter.com")
-        {
-            int queryParametersIdx = url.IndexOf('?');
-        
-            if (queryParametersIdx != -1)
-            {
-                url = url.Substring(0, queryParametersIdx);
-            }
-            
-            quotedPost.TwitterId = url.Split('/')[^1];
-            
-            PostThreadItem? postThreadItem = _postThreadCollection.AsQueryable().SelectMany(t => t.Items)
-                .FirstOrDefault(i => i.TwitterId == quotedPost.TwitterId);
-
-            if (postThreadItem != null)
-            {
-                quotedPost.BlueskyRef = postThreadItem.BlueskyThisRef != null
-                    ? new BlueskyRef(postThreadItem.BlueskyThisRef.Uri, postThreadItem.BlueskyThisRef.Cid)
-                    : null;
-                quotedPost.MastodonId = postThreadItem.MastodonId;
-                quotedPost.ThreadsId = postThreadItem.ThreadsId;
-            }
-        }
-        else if (uri.Host == "bsky.app")
-        {
-            // for example: https://bsky.app/profile/oatmealdome.bsky.social/post/3lcwbawa4n323
-
-            string[] splitPath = uri.PathAndQuery.Split('/');
-
-            string repo = splitPath[^3];
-            string key = splitPath[^1];
-
-            BlueskyClient client = new BlueskyClient();
-            ATReturnedRecord<Post> returnedRecord = await client.Post_Get(repo, key);
-
-            quotedPost.BlueskyRef = new BlueskyRef(returnedRecord.Ref.Uri, returnedRecord.Ref.Cid);
-
-            PostThreadItem? postThreadItem = _postThreadCollection.AsQueryable().SelectMany(t => t.Items)
-                .FirstOrDefault(i => i.BlueskyThisRef != null && i.BlueskyThisRef.Uri == quotedPost.BlueskyRef.Uri);
-
-            if (postThreadItem != null)
-            {
-                quotedPost.TwitterId = postThreadItem.TwitterId;
-                quotedPost.MastodonId = postThreadItem.MastodonId;
-                quotedPost.ThreadsId = postThreadItem.ThreadsId;
-            }
-        }
-        else
-        {
-            throw new NotImplementedException("Unsupported URL");
-        }
         
         SocialPlatform primaryPlatform = quotedPost.GetPrimaryPlatform();
         
