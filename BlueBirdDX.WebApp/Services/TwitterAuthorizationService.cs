@@ -55,7 +55,7 @@ public class TwitterAuthorizationService
                 { "state", state.Id },
                 { "code_challenge", state.Challenge },
                 { "code_challenge_method", "S256" },
-                { "scope", "tweet.read tweet.write users.read offline.access"}
+                { "scope", "tweet.read tweet.write users.read media.write offline.access"}
             };
         
             FormUrlEncodedContent formUrlEncodedContent = new FormUrlEncodedContent(urlParameters);
