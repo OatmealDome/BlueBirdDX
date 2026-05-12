@@ -29,6 +29,10 @@ public class PostThreadManagerRemoteServiceWrapper : PostThreadManagerRemoteServ
         {
             throw new RpcException(new Status(StatusCode.NotFound, "Post thread was not found"));
         }
+        catch (InvalidOperationException e)
+        {
+            throw new RpcException(new Status(StatusCode.InvalidArgument, e.Message));
+        }
 
         return new DeletePostThreadFromSocialPlatformsReply();
     }

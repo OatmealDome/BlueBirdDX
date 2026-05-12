@@ -846,6 +846,11 @@ public class PostThreadManager
             throw new KeyNotFoundException($"Post thread {threadId} was not found");
         }
 
+        if (postThread.State != PostThreadState.Sent)
+        {
+            throw new InvalidOperationException($"Post thread {threadId} is not in Sent state");
+        }
+
         _logger.LogInformation("Deleting social posts for thread {id}", postThread._id.ToString());
 
         AccountGroup group = _accountGroupManager.GetAccountGroup(postThread.TargetGroup);
@@ -873,6 +878,8 @@ public class PostThreadManager
         }
 
         _logger.LogInformation("Deleted social posts for thread {id}", postThread._id.ToString());
+
+        await UpdateThreadState(postThread, PostThreadState.Deleted);
     }
 
     private async Task DeleteFromTwitter(PostThread postThread, AccountGroup group)

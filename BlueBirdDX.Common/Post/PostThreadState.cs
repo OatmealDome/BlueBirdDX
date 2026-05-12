@@ -5,5 +5,6 @@ public enum PostThreadState
     Draft,
     Enqueued,
     Sent,
-    Error
+    Error,
+    Deleted
 }

@@ -173,7 +173,9 @@ public class PostThreadApiController : ControllerBase
             return "Scheduled time is not in UTC";
         }
 
-        if (inState.State == (int)PostThreadState.Sent || inState.State == (int)PostThreadState.Error)
+        if (inState.State == (int)PostThreadState.Sent ||
+            inState.State == (int)PostThreadState.Error ||
+            inState.State == (int)PostThreadState.Deleted)
         {
             return "Invalid thread state";
         }
@@ -305,9 +307,11 @@ public class PostThreadApiController : ControllerBase
             return Problem("Invalid thread ID", statusCode: 404);
         }
         
-        if (postThread.State == PostThreadState.Sent || postThread.State == PostThreadState.Error)
+        if (postThread.State == PostThreadState.Sent ||
+            postThread.State == PostThreadState.Error ||
+            postThread.State == PostThreadState.Deleted)
         {
-            return Problem("Thread is already in Sent or Error state", statusCode: 400);
+            return Problem("Thread is already in a finalized state", statusCode: 400);
         }
         
         string? error = await ValidateIncomingThreadAndGetError(postThreadApi);
