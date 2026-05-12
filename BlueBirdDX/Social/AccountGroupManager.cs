@@ -86,11 +86,10 @@ public class AccountGroupManager
                 
                 ThreadsCredentials credentials = await client.Auth_RefreshLongLivedAccessToken();
 
-                account.AccessToken = credentials.AccessToken;
-                account.Expiry = credentials.Expiry;
-
-                await _accountGroupCollection.ReplaceOneAsync(Builders<AccountGroup>.Filter.Eq(g => g._id, group._id),
-                    group);
+                await _accountGroupCollection.UpdateOneAsync(Builders<AccountGroup>.Filter.Eq(g => g._id, group._id),
+                    Builders<AccountGroup>.Update.Set(g => g.Threads!.AccessToken, credentials.AccessToken));
+                await _accountGroupCollection.UpdateOneAsync(Builders<AccountGroup>.Filter.Eq(g => g._id, group._id),
+                    Builders<AccountGroup>.Update.Set(g => g.Threads!.Expiry, credentials.Expiry));
 
                 _logger.LogInformation("Threads token for account group {groupId} refreshed", group._id);
             }
