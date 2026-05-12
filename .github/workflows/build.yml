@@ -44,10 +44,6 @@ jobs:
           context: .
           file: ./BlueBirdDX/Dockerfile
           platforms: linux/amd64
-          build-args: |
-            NuGet_SourceUrl=https://nuget.pkg.github.com/oatmealdome/index.json
-            NuGet_SourceUserName=${{ github.repository_owner }}
-            NuGet_SourcePassword=${{ secrets.GHCR_INSTALL_PAT }}
           tags: |
             ghcr.io/oatmealdome/bluebirddx:latest
       - name: Build WebApp
@@ -56,10 +52,6 @@ jobs:
           context: .
           file: ./BlueBirdDX.WebApp/Dockerfile
           platforms: linux/amd64
-          build-args: |
-            NuGet_SourceUrl=https://nuget.pkg.github.com/oatmealdome/index.json
-            NuGet_SourceUserName=${{ github.repository_owner }}
-            NuGet_SourcePassword=${{ secrets.GHCR_INSTALL_PAT }}
           tags: |
             ghcr.io/oatmealdome/bluebirddxwebapp:latest
       - name: Build TextWrapper
@@ -67,9 +59,5 @@ jobs:
         with:
           context: ./BlueBirdDX.TextWrapper
           platforms: linux/amd64
-          build-args: |
-            NuGet_SourceUrl=https://nuget.pkg.github.com/oatmealdome/index.json
-            NuGet_SourceUserName=${{ github.repository_owner }}
-            NuGet_SourcePassword=${{ secrets.GHCR_INSTALL_PAT }}
           tags: |
             ghcr.io/oatmealdome/bluebirddxtextwrapper:latest
