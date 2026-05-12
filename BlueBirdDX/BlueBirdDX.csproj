@@ -41,6 +41,7 @@
     <ItemGroup>
       <Protobuf Include="Protos\social_app_authorization.proto" GrpcServices="Server" />
       <Protobuf Include="Protos\media_upload_jobs.proto" GrpcServices="Server" />
+      <Protobuf Include="Protos\post_threads.proto" GrpcServices="Server" />
     </ItemGroup>
 
 </Project>

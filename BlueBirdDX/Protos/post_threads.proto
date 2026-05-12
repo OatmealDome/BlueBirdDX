@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+option csharp_namespace = "BlueBirdDX.Grpc";
+
+package bluebirddx.grpc;
+
+service PostThreadManagerRemoteService {
+  rpc DeletePostThreadFromSocialPlatforms (DeletePostThreadFromSocialPlatformsRequest) returns (DeletePostThreadFromSocialPlatformsReply);
+}
+
+message DeletePostThreadFromSocialPlatformsRequest {
+  string thread_id = 1;
+}
+
+message DeletePostThreadFromSocialPlatformsReply {
+}

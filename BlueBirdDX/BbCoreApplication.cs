@@ -92,6 +92,7 @@ public class BbCoreApplication : SlabWebApplication
     {
         app.MapGrpcService<SocialAppAuthorizationGrpcService>();
         app.MapGrpcService<MediaUploadJobsGrpcService>();
+        app.MapGrpcService<PostThreadManagerRemoteServiceWrapper>();
         app.MapGet("/", () => "OK");
     }
 }
