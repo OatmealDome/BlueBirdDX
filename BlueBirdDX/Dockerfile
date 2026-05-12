@@ -4,12 +4,9 @@ WORKDIR /app
 # --platform=$BUILDPLATFORM is currently required for arm builds: https://github.com/dotnet/sdk/issues/29892#issuecomment-1691521917
 FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
-ARG NuGet_SourceUrl
-ARG NuGet_SourceUserName
-ARG NuGet_SourcePassword
 WORKDIR /src
-COPY ["BlueBirdDX/BlueBirdDX.csproj", "nuget-ci.config", "BlueBirdDX/"]
-RUN dotnet restore --configfile "BlueBirdDX/nuget-ci.config" "BlueBirdDX/BlueBirdDX.csproj"
+COPY ["BlueBirdDX/BlueBirdDX.csproj", "BlueBirdDX/"]
+RUN dotnet restore "BlueBirdDX/BlueBirdDX.csproj"
 COPY . .
 WORKDIR "/src/BlueBirdDX"
 RUN dotnet build "BlueBirdDX.csproj" -c $BUILD_CONFIGURATION -o /app/build

@@ -11,9 +11,6 @@
       <Content Include="..\.dockerignore">
         <Link>.dockerignore</Link>
       </Content>
-      <Content Include="..\nuget-ci.config">
-        <Link>nuget-ci.config</Link>
-      </Content>
     </ItemGroup>
 
     <ItemGroup>
