@@ -19,10 +19,10 @@ public class UploadedMediaApiController : ControllerBase
     private readonly IMongoCollection<UploadedMedia> _uploadedMediaCollection;
     private readonly IMongoCollection<MediaUploadJob> _mediaUploadJobCollection;
     private readonly SlabS3Service _s3Service;
-    private readonly MediaUploadJobs.MediaUploadJobsClient _mediaUploadJobsClient;
+    private readonly MediaUploadJobManagerRemoteService.MediaUploadJobManagerRemoteServiceClient _mediaUploadJobsClient;
 
     public UploadedMediaApiController(SlabMongoService mongoService, SlabS3Service s3Service,
-        MediaUploadJobs.MediaUploadJobsClient mediaUploadJobsClient)
+        MediaUploadJobManagerRemoteService.MediaUploadJobManagerRemoteServiceClient mediaUploadJobsClient)
     {
         _uploadedMediaCollection = mongoService.GetCollection<UploadedMedia>("media");
         _mediaUploadJobCollection = mongoService.GetCollection<MediaUploadJob>("media_jobs");

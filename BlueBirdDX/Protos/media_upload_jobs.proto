@@ -4,7 +4,7 @@ option csharp_namespace = "BlueBirdDX.Grpc";
 
 package bluebirddx.grpc;
 
-service MediaUploadJobs {
+service MediaUploadJobManagerRemoteService {
   rpc ProcessReadyMediaUploadJob (ProcessReadyMediaUploadJobRequest) returns (ProcessReadyMediaUploadJobReply);
 }
 

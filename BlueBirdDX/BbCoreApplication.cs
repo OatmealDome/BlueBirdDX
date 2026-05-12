@@ -91,7 +91,7 @@ public class BbCoreApplication : SlabWebApplication
     protected override void SetupApplication(WebApplication app)
     {
         app.MapGrpcService<SocialAppAuthorizationGrpcService>();
-        app.MapGrpcService<MediaUploadJobsGrpcService>();
+        app.MapGrpcService<MediaUploadJobManagerRemoteServiceWrapper>();
         app.MapGrpcService<PostThreadManagerRemoteServiceWrapper>();
         app.MapGet("/", () => "OK");
     }

@@ -4,11 +4,11 @@ using MongoDB.Bson;
 
 namespace BlueBirdDX.Grpc;
 
-public class MediaUploadJobsGrpcService : MediaUploadJobs.MediaUploadJobsBase
+public class MediaUploadJobManagerRemoteServiceWrapper : MediaUploadJobManagerRemoteService.MediaUploadJobManagerRemoteServiceBase
 {
     private readonly MediaUploadJobManager _jobManager;
 
-    public MediaUploadJobsGrpcService(MediaUploadJobManager jobManager)
+    public MediaUploadJobManagerRemoteServiceWrapper(MediaUploadJobManager jobManager)
     {
         _jobManager = jobManager;
     }

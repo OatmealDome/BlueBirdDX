@@ -25,7 +25,7 @@ public class BbWebApplication : SlabWebApplication
         {
             options.Address = new Uri(coreUrl);
         });
-        appBuilder.Services.AddGrpcClient<MediaUploadJobs.MediaUploadJobsClient>(options =>
+        appBuilder.Services.AddGrpcClient<MediaUploadJobManagerRemoteService.MediaUploadJobManagerRemoteServiceClient>(options =>
         {
             options.Address = new Uri(coreUrl);
         });
