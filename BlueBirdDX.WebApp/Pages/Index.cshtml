@@ -123,13 +123,13 @@
                 let actions = []
                 
                 if (thread.state === "Draft" || thread.state === "Enqueued") {
-                    actions.push("<a href=\"/thread/" + thread.id + "/\">edit</a>");
+                    actions.push("<a href=\"/thread/" + thread.id + "/\">✏️ edit</a>");
                 }
 
-                actions.push("<a href=\"/thread/new?baseThreadId=" + thread.id + "\">clone</a>");
+                actions.push("<a href=\"/thread/new?baseThreadId=" + thread.id + "\">📋 clone</a>");
 
                 if (thread.state === "Sent") {
-                    actions.push("<a href=\"#\" class=\"delete-posts-link\" data-thread-id=\"" + thread.id + "\">delete</a>");
+                    actions.push("<a href=\"#\" class=\"delete-posts-link\" data-thread-id=\"" + thread.id + "\">🗑️ delete</a>");
                 }
 
                 $("tbody").append("<tr><td>" + thread.name + "</td><td>" + thread.state + "</td><td>" + actions.join(", ") + "</td></tr>");
