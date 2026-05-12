@@ -836,4 +836,190 @@ public class PostThreadManager
             });
         }
     }
+
+    public async Task DeletePostThreadFromSocialPlatforms(ObjectId threadId)
+    {
+        PostThread? postThread = _postThreadCollection.AsQueryable().FirstOrDefault(p => p._id == threadId);
+
+        if (postThread == null)
+        {
+            throw new KeyNotFoundException($"Post thread {threadId} was not found");
+        }
+
+        _logger.LogInformation("Deleting social posts for thread {id}", postThread._id.ToString());
+
+        AccountGroup group = _accountGroupManager.GetAccountGroup(postThread.TargetGroup);
+
+        if (postThread.PostToTwitter && group.Twitter != null &&
+            !string.IsNullOrEmpty(_socialSettings.TwitterClientId) &&
+            !string.IsNullOrEmpty(_socialSettings.TwitterClientSecret))
+        {
+            await DeleteFromTwitter(postThread, group);
+        }
+
+        if (postThread.PostToBluesky && group.Bluesky != null)
+        {
+            await DeleteFromBluesky(postThread, group.Bluesky);
+        }
+
+        if (postThread.PostToMastodon && group.Mastodon != null)
+        {
+            await DeleteFromMastodon(postThread, group.Mastodon);
+        }
+
+        if (postThread.PostToThreads && group.Threads != null)
+        {
+            await DeleteFromThreads(postThread, group.Threads);
+        }
+
+        _logger.LogInformation("Deleted social posts for thread {id}", postThread._id.ToString());
+    }
+
+    private async Task DeleteFromTwitter(PostThread postThread, AccountGroup group)
+    {
+        TwitterClient client =
+            new TwitterClient(_socialSettings.TwitterClientId!, _socialSettings.TwitterClientSecret!);
+        await client.Login(group.Twitter!.RefreshToken);
+
+        try
+        {
+            foreach (PostThreadItem item in postThread.Items.AsEnumerable().Reverse())
+            {
+                if (item.TwitterId == null)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    await _retryResiliencePipeline.ExecuteAsync(async (_) =>
+                    {
+                        await client.DeleteTweet(item.TwitterId);
+                    });
+                }
+                catch (Exception e)
+                {
+                    _logger.LogError(e, "Failed to delete thread item from Twitter for thread {id}",
+                        postThread._id.ToString());
+                }
+            }
+        }
+        finally
+        {
+            try
+            {
+                await client.Logout();
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "An error occurred while logging out of Twitter");
+            }
+
+            await _accountGroupManager.UpdateTwitterRefreshTokenForGroup(group, client.RefreshToken!);
+        }
+    }
+
+    private async Task DeleteFromBluesky(PostThread postThread, BlueskyAccount account)
+    {
+        BlueskyAgent agent = new BlueskyAgent();
+        await agent.Login(account.Identifier, account.Password);
+
+        try
+        {
+            foreach (PostThreadItem item in postThread.Items.AsEnumerable().Reverse())
+            {
+                if (item.BlueskyThisRef == null)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    StrongReference postRef = new StrongReference(item.BlueskyThisRef.Uri, item.BlueskyThisRef.Cid);
+
+                    await _retryResiliencePipeline.ExecuteAsync(async (_) =>
+                    {
+                        await agent.DeleteRecord(postRef);
+                    });
+                }
+                catch (Exception e)
+                {
+                    _logger.LogError(e, "Failed to delete thread item from Bluesky for thread {id}",
+                        postThread._id.ToString());
+                }
+            }
+        }
+        finally
+        {
+            try
+            {
+                await agent.Logout();
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "An error occurred while logging out of Bluesky");
+            }
+        }
+    }
+
+    private async Task DeleteFromMastodon(PostThread postThread, MastodonAccount account)
+    {
+        MastodonClient client = new MastodonClient(account.InstanceUrl, account.AccessToken);
+
+        foreach (PostThreadItem item in postThread.Items.AsEnumerable().Reverse())
+        {
+            if (item.MastodonId == null)
+            {
+                continue;
+            }
+
+            try
+            {
+                await _retryResiliencePipeline.ExecuteAsync(async (_) =>
+                {
+                    await client.DeleteStatus(item.MastodonId);
+                });
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Failed to delete thread item from Mastodon for thread {id}",
+                    postThread._id.ToString());
+            }
+        }
+    }
+
+    private async Task DeleteFromThreads(PostThread postThread, ThreadsAccount account)
+    {
+        ThreadsClient client = new ThreadsClient(_socialSettings.ThreadsAppId!.Value, _socialSettings.ThreadsAppSecret!)
+        {
+            Credentials = new ThreadsCredentials()
+            {
+                CredentialType = ThreadsCredentialType.LongLived,
+                AccessToken = account.AccessToken,
+                Expiry = account.Expiry,
+                UserId = account.UserId
+            }
+        };
+
+        foreach (PostThreadItem item in postThread.Items.AsEnumerable().Reverse())
+        {
+            if (item.ThreadsId == null)
+            {
+                continue;
+            }
+
+            try
+            {
+                await _retryResiliencePipeline.ExecuteAsync(async (_) =>
+                {
+                    await client.Publishing_DeleteMediaContainer(item.ThreadsId);
+                });
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Failed to delete thread item from Threads for thread {id}",
+                    postThread._id.ToString());
+            }
+        }
+    }
 }
