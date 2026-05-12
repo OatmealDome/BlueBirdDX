@@ -431,7 +431,22 @@ public class ThreadsClient
             ErrorMessage = response.ErrorMessage
         };
     }
-    
+
+    public async Task<bool> Publishing_DeleteMediaContainer(string mediaContainerId)
+    {
+        VerifyCredentials();
+
+        DeleteMediaContainerRequest request = new DeleteMediaContainerRequest()
+        {
+            MediaContainerId = mediaContainerId
+        };
+
+        DeleteMediaContainerResponse
+            response = await SendRequestWithJsonResponse<DeleteMediaContainerResponse>(request);
+
+        return response.Success;
+    }
+
     //
     // User
     //
