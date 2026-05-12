@@ -66,6 +66,37 @@
     <a class="btn btn-success" href="#header" role="button">⏫</a>
 </div>
 
+<!-- Deleting modal -->
+<div id="deleting-modal" class="modal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Deleting Posts</h5>
+            </div>
+            <div class="modal-body">
+                <p id="deleting-element">Please wait.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete result modal -->
+<div id="delete-result-modal" class="modal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 id="delete-result-title" class="modal-title">Deleted</h5>
+            </div>
+            <div class="modal-body">
+                <p id="delete-result-element">Finished.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Error modal -->
 <div id="error-modal" class="modal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
@@ -97,6 +128,10 @@
 
                 actions.push("<a href=\"/thread/new?baseThreadId=" + thread.id + "\">clone</a>");
 
+                if (thread.state === "Sent") {
+                    actions.push("<a href=\"#\" class=\"delete-posts-link\" data-thread-id=\"" + thread.id + "\">delete</a>");
+                }
+
                 $("tbody").append("<tr><td>" + thread.name + "</td><td>" + thread.state + "</td><td>" + actions.join(", ") + "</td></tr>");
             }
         }
@@ -113,6 +148,38 @@
                 $("#error-modal").modal("show");
             });
         }
+
+        function showDeleteResult(title, message) {
+            $("#delete-result-title").text(title);
+            $("#delete-result-element").text(message);
+            $("#delete-result-modal").modal("show");
+            $("#deleting-modal").modal("hide");
+        }
+
+        $("tbody").on("click", ".delete-posts-link", function (event) {
+            event.preventDefault();
+
+            const threadId = $(this).data("thread-id");
+
+            $("#deleting-modal").modal("show");
+
+            $.ajax({
+                method: "POST",
+                url: "/api/v1/thread/" + threadId + "/delete"
+            }).done(function () {
+                showDeleteResult("Deleted", "The thread has been deleted.");
+            }).fail(function (xhr) {
+                let message = "Deletion failed.";
+
+                if (xhr.responseJSON && xhr.responseJSON.detail) {
+                    message = xhr.responseJSON.detail;
+                } else if (xhr.responseText) {
+                    message = xhr.responseText;
+                }
+
+                showDeleteResult("Deletion Failed", message);
+            });
+        });
         
         $("#loadAllCheck").change(function () {
             requestRepopulateTable();
