@@ -7,19 +7,39 @@ using BlueBirdDX.Database.Migration.PostThread;
 using BlueBirdDX.Database.Migration.UploadedMedia;
 using BlueBirdDX.Media;
 using BlueBirdDX.Social;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using OatmealDome.Slab;
 using OatmealDome.Slab.Mongo;
 using OatmealDome.Slab.S3;
+using OatmealDome.Slab.Web;
 using Quartz;
 
 namespace BlueBirdDX;
 
-public class BbCoreApplication : SlabConsoleApplication
+public class BbCoreApplication : SlabWebApplication
 {
     protected override string ApplicationName => "BlueBirdDX.Core";
-    
+
+    // TODO: Can we better integrate this with Slab?
+    protected override WebApplicationBuilder CreateBuilder(string[]? args)
+    {
+        WebApplicationBuilder builder = base.CreateBuilder(args);
+        
+        builder.WebHost.ConfigureKestrel(options =>
+        {
+            options.ConfigureEndpointDefaults(listenOptions =>
+            {
+                listenOptions.Protocols = HttpProtocols.Http2;
+            });
+        });
+
+        return builder;
+    }
+
     protected override void BuildApplication(ISlabApplicationBuilder appBuilder)
     {
+        appBuilder.Services.AddGrpc();
+
         appBuilder.RegisterMongo(b => b
             .AddCollection<AccountGroup>("accounts")
             .AddMigrator<AccountGroup, AccountGroupMigratorOneToTwo>()
@@ -65,5 +85,10 @@ public class BbCoreApplication : SlabConsoleApplication
                 .WithSimpleSchedule(builder => builder
                     .WithIntervalInHours(24)
                     .RepeatForever()));
+    }
+
+    protected override void SetupApplication(WebApplication app)
+    {
+        app.MapGet("/", () => "OK");
     }
 }
