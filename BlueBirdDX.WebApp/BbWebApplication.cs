@@ -18,20 +18,20 @@ public class BbWebApplication : SlabWebApplication
     protected override void BuildApplication(ISlabApplicationBuilder appBuilder)
     {
         appBuilder.Services.AddRazorPages();
+        
+        string coreUrl = appBuilder.Configuration.GetValue<string>("Grpc:CoreUrl") ?? "http://core";
+        
         appBuilder.Services.AddGrpcClient<SocialAppAuthorization.SocialAppAuthorizationClient>(options =>
         {
-            string coreServiceUrl = appBuilder.Configuration.GetValue<string>("Grpc:CoreUrl") ?? "http://core";
-            options.Address = new Uri(coreServiceUrl);
+            options.Address = new Uri(coreUrl);
         });
         appBuilder.Services.AddGrpcClient<MediaUploadJobs.MediaUploadJobsClient>(options =>
         {
-            string coreServiceUrl = appBuilder.Configuration.GetValue<string>("Grpc:CoreUrl") ?? "http://core";
-            options.Address = new Uri(coreServiceUrl);
+            options.Address = new Uri(coreUrl);
         });
         appBuilder.Services.AddGrpcClient<PostThreadManagerRemoteService.PostThreadManagerRemoteServiceClient>(options =>
         {
-            string coreServiceUrl = appBuilder.Configuration.GetValue<string>("Grpc:CoreUrl") ?? "http://core";
-            options.Address = new Uri(coreServiceUrl);
+            options.Address = new Uri(coreUrl);
         });
 
         appBuilder.RegisterMongo(b => b
