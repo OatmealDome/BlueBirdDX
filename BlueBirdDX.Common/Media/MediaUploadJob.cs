@@ -5,7 +5,7 @@ namespace BlueBirdDX.Common.Media;
 
 public class MediaUploadJob : SlabMongoDocument
 {
-    public const int LatestSchemaVersion = 1;
+    public const int LatestSchemaVersion = 2;
 
     public string Name
     {
@@ -48,10 +48,4 @@ public class MediaUploadJob : SlabMongoDocument
         get;
         set;
     }
-
-    public bool IsJobForMigrationTwoToThree
-    {
-        get;
-        set;
-    } = false;
 }

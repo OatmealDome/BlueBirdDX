@@ -3,6 +3,7 @@ using BlueBirdDX.Common.Media;
 using BlueBirdDX.Common.Post;
 using BlueBirdDX.Database;
 using BlueBirdDX.Database.Migration.AccountGroup;
+using BlueBirdDX.Database.Migration.MediaUploadJob;
 using BlueBirdDX.Database.Migration.PostThread;
 using BlueBirdDX.Database.Migration.UploadedMedia;
 using BlueBirdDX.Grpc;
@@ -48,6 +49,7 @@ public class BbCoreApplication : SlabWebApplication
             .AddMigrator<AccountGroup, AccountGroupMigratorThreeToFour>()
             .AddMigrator<AccountGroup, AccountGroupMigratorFourToFive>()
             .AddCollection<MediaUploadJob>("media_jobs")
+            .AddMigrator<MediaUploadJob, MediaUploadJobMigratorOneToTwo>()
             .AddCollection<UploadedMedia>("media")
             .AddMigrator<UploadedMedia, UploadedMediaMigratorOneToTwo>()
             .AddMigrator<UploadedMedia, UploadedMediaMigratorTwoToThree>()

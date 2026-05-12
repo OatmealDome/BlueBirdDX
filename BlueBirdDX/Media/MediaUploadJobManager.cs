@@ -1,7 +1,6 @@
 using Amazon.Runtime;
 using BlueBirdDX.Common.Media;
 using BlueBirdDX.Common.Util;
-using BlueBirdDX.Database;
 using FFMpegCore;
 using FFMpegCore.Enums;
 using Microsoft.Extensions.Hosting;
@@ -245,37 +244,22 @@ public class MediaUploadJobManager : BackgroundService
 
     private async Task ProcessMediaJob(MediaUploadJob uploadJob)
     {
-        UploadedMedia media;
-        string unprocessedFileName;
-
-        if (uploadJob.IsJobForMigrationTwoToThree)
-        {
-            _logger.LogInformation("Processing media job {jobId} with two -> three migration for media ID {mediaId}",
-                uploadJob._id.ToString(), uploadJob._id.ToString());
+        ObjectId mediaId = ObjectId.GenerateNewId();
             
-            media = _mediaCollection.AsQueryable().FirstOrDefault(m => m._id == uploadJob.MediaId)!;
-
-            unprocessedFileName = "media/" + media._id.ToString();
-        }
-        else
+        UploadedMedia media = new UploadedMedia()
         {
-            ObjectId mediaId = ObjectId.GenerateNewId();
-            
-            media = new UploadedMedia()
-            {
-                _id = mediaId,
-                SchemaVersion = UploadedMedia.LatestSchemaVersion,
-                Name = uploadJob.Name,
-                AltText = uploadJob.AltText,
-                MimeType = uploadJob.MimeType,
-                CreationTime = DateTime.UtcNow
-            };
+            _id = mediaId,
+            SchemaVersion = UploadedMedia.LatestSchemaVersion,
+            Name = uploadJob.Name,
+            AltText = uploadJob.AltText,
+            MimeType = uploadJob.MimeType,
+            CreationTime = DateTime.UtcNow
+        };
 
-            _logger.LogInformation("Processing media job {jobId} with new media ID {mediaId}", uploadJob._id.ToString(),
-                mediaId.ToString());
+        _logger.LogInformation("Processing media job {jobId} with new media ID {mediaId}", uploadJob._id.ToString(),
+            mediaId.ToString());
 
-            unprocessedFileName = "unprocessed_media/" + uploadJob._id.ToString();
-        }
+        string unprocessedFileName = "unprocessed_media/" + uploadJob._id.ToString();
         
         await _uploadJobCollection.UpdateOneAsync(Builders<MediaUploadJob>.Filter.Eq(j => j._id, uploadJob._id),
             Builders<MediaUploadJob>.Update.Set(j => j.State, MediaUploadJobState.Processing));
@@ -288,7 +272,7 @@ public class MediaUploadJobManager : BackgroundService
 
             Dictionary<SocialPlatform, byte[]> optimizedData = new Dictionary<SocialPlatform, byte[]>();
 
-            if (uploadJob.MimeType.StartsWith("image/") || uploadJob.IsJobForMigrationTwoToThree)
+            if (uploadJob.MimeType.StartsWith("image/"))
             {
                 standardData = await ProcessImage(media, data, optimizedData);
             }
@@ -308,26 +292,16 @@ public class MediaUploadJobManager : BackgroundService
             
             string fileName = $"media/{media._id.ToString()}";
 
-            if (!uploadJob.IsJobForMigrationTwoToThree)
-            {
-                await _s3Service.DeleteFile(unprocessedFileName);
+            await _s3Service.DeleteFile(unprocessedFileName);
             
-                await _s3Service.TransferFile(fileName, standardData, media.MimeType);
-            }
+            await _s3Service.TransferFile(fileName, standardData, media.MimeType);
 
             foreach (KeyValuePair<SocialPlatform, byte[]> pair in optimizedData)
             {
                 await _s3Service.TransferFile($"{fileName}_{pair.Key.ToString().ToLower()}", pair.Value, "image/jpeg");
             }
 
-            if (!uploadJob.IsJobForMigrationTwoToThree)
-            {
-                await _mediaCollection.InsertOneAsync(media);
-            }
-            else
-            {
-                await _mediaCollection.ReplaceOneAsync(Builders<UploadedMedia>.Filter.Eq(m => m._id, media._id), media);
-            }
+            await _mediaCollection.InsertOneAsync(media);
 
             uploadJob.State = MediaUploadJobState.Success;
             uploadJob.MediaId = media._id;
@@ -343,10 +317,7 @@ public class MediaUploadJobManager : BackgroundService
 
             try
             {
-                if (!uploadJob.IsJobForMigrationTwoToThree)
-                {
-                    await _s3Service.DeleteFile(unprocessedFileName);
-                }
+                await _s3Service.DeleteFile(unprocessedFileName);
             }
             catch (Exception e2)
             {
@@ -429,18 +400,15 @@ public class MediaUploadJobManager : BackgroundService
         
         await _uploadJobCollection.DeleteOneAsync(Builders<MediaUploadJob>.Filter.Eq(j => j._id, uploadJob._id));
         
-        if (!uploadJob.IsJobForMigrationTwoToThree)
-        {
-            string unprocessedFileName = "unprocessed_media/" + uploadJob._id.ToString();
+        string unprocessedFileName = "unprocessed_media/" + uploadJob._id.ToString();
 
-            try
-            {
-                await _s3Service.DeleteFile(unprocessedFileName);
-            }
-            catch (AmazonServiceException)
-            {
-                // ignore, this probably means that the file doesn't exist
-            }
+        try
+        {
+            await _s3Service.DeleteFile(unprocessedFileName);
+        }
+        catch (AmazonServiceException)
+        {
+            // ignore, this probably means that the file doesn't exist
         }
     }
     
