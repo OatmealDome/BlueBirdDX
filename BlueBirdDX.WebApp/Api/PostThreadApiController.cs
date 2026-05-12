@@ -218,7 +218,7 @@ public class PostThreadApiController : ControllerBase
 
                 QuotedPost quotedPost = await QuotedPost.BuildInitialFromUrl(item.QuotedPost, _postThreadCollection);
 
-                if (inState.PostToTwitter)
+                if (inState.PostToTwitter && !group.Twitter!.Premium)
                 {
                     int length = await _textWrapperClient.CountCharacters(item.Text);
 
