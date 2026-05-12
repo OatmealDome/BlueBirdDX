@@ -11,7 +11,7 @@ BlueBirdDX is made up of two primary applications:
 * Core: runs in the background and sends posts to each social media site
 * WebApp: allows the user to create threads and upload media via their web browser (also contains an API backend)
 
-MongoDB is used as the database system, and media files are stored on an Amazon S3 bucket. If a post contains a quoted tweet, Selenium WebDriver is used to generate a screenshot of the tweet which is then attached to posts made on non-Twitter social media services. NATS is used as a way for the WebApp to trigger events on the Core.
+MongoDB is used as the database system, and media files are stored on an Amazon S3 bucket. If a post contains a quoted tweet, Selenium WebDriver is used to generate a screenshot of the tweet which is then attached to posts made on non-Twitter social media services. gRPC is used to call functions on the Core from the WebApp.
 
 TextWrapper is a small Node application that wraps the twitter-text library. Please check [its README file](BlueBirdDX.TextWrapper/README.md) for more information.
 
@@ -25,6 +25,13 @@ A sample set up with Docker is detailed below.
 
 ### Initial Steps
 
+To generate the necessary applications and/or secrets for each social media site, please consult their documentation:
+
+* [Twitter](https://developer.twitter.com)
+* [Bluesky](https://bsky.app/settings/app-passwords) (while using your account's password does work, Bluesky recommends creating an app-specific password for each third-party application)
+* [Mastodon](https://docs.joinmastodon.org/client/token/)
+* [Threads](https://developers.facebook.com/docs/threads/get-started)
+
 Here is a sample `docker-compose.yml` file which can be used to run the application (replace secrets management with something better in production!):
 
 ```yaml
@@ -37,10 +44,6 @@ services:
 
   selenium-standalone-chrome:
     image: selenium/standalone-chrome
-    restart: unless-stopped
-
-  nats:
-    image: nats:2
     restart: unless-stopped
 
   textwrapper:
@@ -57,6 +60,22 @@ services:
       - selenium-standalone-chrome
     volumes:
       - ./core-data:/data
+    environment:
+      Mongo__ConnectionString: "mongodb://bluebirddx:password@mongo:27017/"
+      Mongo__Database: "bluebirddx"
+      S3__ServiceUrl: "<S3 service URL>"
+      S3__Bucket: "<S3 bucket name>"
+      S3__AccessKey: "<S3 access key>"
+      S3__SecretAccessKey: "<S3 access key secret>"
+      PostThreadManager__TextWrapperServer: "http://textwrapper"
+      PostThreadManager__SeleniumNodeUrl: "http://selenium-standalone-chrome:4444/wd/hub"
+      PostThreadManager__WebAppUrl: "http://webapp:8080"
+      # For Twitter support
+      SocialApp__TwitterClientId: "<Twitter client ID>"
+      SocialApp__TwitterClientSecret: "<Twitter client secret>"
+      # For Threads support
+      SocialApp__ThreadsAppId: 1234 # Threads app ID
+      SocialApp__ThreadsAppSecret: "<Threads app secret>"
 
   webapp:
     image: ghcr.io/oatmealdome/bluebirddxwebapp
@@ -66,52 +85,17 @@ services:
     ports:
       - 80:8080
     environment:
-      DatabaseSettings__DatabaseName: "bluebirddx"
-      DatabaseSettings__ConnectionString: "mongodb://bluebirddx:password@mongo:27017/"
-      DatabaseSettings__MongoExpressUrl: "/mongo"
-      RemoteStorageSettings__ServiceUrl: "<S3 service URL>"
-      RemoteStorageSettings__Bucket: "<S3 bucket name>"
-      RemoteStorageSettings__AccessKey: "<S3 access key>"
-      RemoteStorageSettings__AccessKeySecret: "<S3 access key secret>"
-      NotificationSettings__Server: "nats"
+      Mongo__ConnectionString: "mongodb://bluebirddx:password@mongo:27017/"
+      Mongo__Database: "bluebirddx"
+      Database__MongoExpressUrl: "/mongo"
+      S3__ServiceUrl: "<S3 service URL>"
+      S3__Bucket: "<S3 bucket name>"
+      S3__AccessKey: "<S3 access key>"
+      S3__SecretAccessKey: "<S3 access key secret>"
+      TextWrapper__Server: "http://textwrapper"
+      Grpc__CoreUrl: "http://core"
+      SocialAppAuthorization__BaseUrl: "http://bluebird.example.com"
 ```
-
-In a folder named `core-data`, create the following `config.json` file:
-
-```json
-{
-  "Logging": {
-    "SlackWebhookUrl": "",
-    "EnableSelfLog": false
-  },
-  "Database": {
-    "ConnectionString": "mongodb://bluebirddx:password@mongo:27017/",
-    "DatabaseName": "bluebirddx"
-  },
-  "RemoteStorage": {
-    "ServiceUrl": "<S3 service URL>",
-    "Bucket": "<S3 bucket name>",
-    "AccessKey": "<S3 access key>",
-    "AccessKeySecret": "<S3 access key secret>"
-  },
-  "WebDriver": {
-    "NodeUrl": "http://selenium-standalone-chrome:4444/wd/hub",
-    "WebAppUrl": "http://webapp:8080"
-  },
-  "TextWrapper": {
-    "ServerUrl": "http://textwrapper"
-  },
-  "Notification": {
-    "Server": "nats"
-  },
-  "Video": {
-    "FFmpegBinariesFolder": "/usr/bin",
-    "TemporaryFolder": "/tmp"
-  }
-}
-```
-
-If you would like to disable video support, set `FFmpegBinariesFolder` to an empty string.
 
 ### Database Setup
 
@@ -126,19 +110,14 @@ Create the following collections underneath your specified database:
 
 Before you can use BlueBirdDX, you need to add an account group to the `accounts` collection. There is no UI for this in the WebApp at this time, so you will need to do this manually using a MongoDB tool, like Mongo Express.
 
-Use the following template:
+Use the following template to create an account group:
 
 ```
 {
     _id: ObjectId(),
-    SchemaVersion: 2,
+    SchemaVersion: 5,
     Name: 'Account Name',
-    Twitter: {
-        ConsumerKey: '<consumer key>',
-        ConsumerSecret: '<consumer secret>',
-        AccessToken: '<access token>',
-        AccessTokenSecret: '<access token secret>'
-    },
+    Twitter: null,
     Bluesky: {
         Identifier: 'identifier.example.com',
         Password: '<password>'
@@ -147,24 +126,15 @@ Use the following template:
         InstanceUrl: 'https://fedi.example.com',
         AccessToken: '<access token>'
     },
-    Threads: {
-        ClientId: <client id>,
-        ClientSecret: '<client secret>',
-        AccessToken: '<access token>',
-        UserId: '<user id>',
-        Expiry: ISODate('2024-09-01T00:00:00.000Z')
-    }
+    Threads: null,
+    TwitterOAuth1: null,
+    ThreadsLegacy: null
 }
 ```
 
-To generate the necessary tokens for each social media site, please consult their documentation:
-
-* [Twitter](https://developer.twitter.com)
-* [Bluesky](https://bsky.app/settings/app-passwords) (while using your account's password does work, Bluesky recommends creating an app-specific password for each third-party application)
-* [Mastodon](https://docs.joinmastodon.org/client/token/)
-* [Threads](https://developers.facebook.com/docs/threads/get-started)
-
 If you would like to exclude a certain social media site from a group, replace its entire object with `null`.
+
+To create tokens for Twitter and Threads, use the Account Management dropdown to associate a social media account with an account group and get credentials for it. For Bluesky and Mastodon, insert the keys into the account group document in the fields shown above.
 
 ### Creating Threads
 
