@@ -46,6 +46,7 @@ public class BbCoreApplication : SlabWebApplication
             .AddMigrator<AccountGroup, AccountGroupMigratorOneToTwo>()
             .AddMigrator<AccountGroup, AccountGroupMigratorTwoToThree>()
             .AddMigrator<AccountGroup, AccountGroupMigratorThreeToFour>()
+            .AddMigrator<AccountGroup, AccountGroupMigratorFourToFive>()
             .AddCollection<MediaUploadJob>("media_jobs")
             .AddCollection<UploadedMedia>("media")
             .AddMigrator<UploadedMedia, UploadedMediaMigratorOneToTwo>()
