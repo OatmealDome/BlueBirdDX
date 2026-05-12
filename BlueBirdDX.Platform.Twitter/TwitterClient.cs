@@ -391,4 +391,15 @@ public class TwitterClient
 
         return tweetResponse.InnerData.Id;
     }
+
+    public async Task<bool> DeleteTweet(string tweetId)
+    {
+        using HttpResponseMessage responseMessage =
+            await SendRequestToNormalEndpoint(HttpMethod.Delete, $"/tweets/{Uri.EscapeDataString(tweetId)}");
+
+        DeleteTweetV2Response deleteTweetResponse =
+            JsonSerializer.Deserialize<DeleteTweetV2Response>(await responseMessage.Content.ReadAsStringAsync())!;
+
+        return deleteTweetResponse.InnerData.Deleted;
+    }
 }
