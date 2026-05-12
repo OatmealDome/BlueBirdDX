@@ -33,6 +33,7 @@
     <ItemGroup>
       <Protobuf Include="..\BlueBirdDX\Protos\social_app_authorization.proto" Link="Protos\social_app_authorization.proto" GrpcServices="Client" />
       <Protobuf Include="..\BlueBirdDX\Protos\media_upload_jobs.proto" Link="Protos\media_upload_jobs.proto" GrpcServices="Client" />
+      <Protobuf Include="..\BlueBirdDX\Protos\post_threads.proto" Link="Protos\post_threads.proto" GrpcServices="Client" />
     </ItemGroup>
 
 </Project>

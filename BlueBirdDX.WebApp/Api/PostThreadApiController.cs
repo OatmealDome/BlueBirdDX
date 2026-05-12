@@ -5,11 +5,14 @@ using BlueBirdDX.Api;
 using BlueBirdDX.Common.Social;
 using BlueBirdDX.Common.Util;
 using BlueBirdDX.Common.Util.TextWrapper;
+using BlueBirdDX.Grpc;
 using BlueBirdDX.WebApp.Services;
+using Grpc.Core;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using OatmealDome.Slab.Mongo;
+using GrpcStatusCode = Grpc.Core.StatusCode;
 
 namespace BlueBirdDX.WebApp.Api;
 
@@ -23,13 +26,16 @@ public class PostThreadApiController : ControllerBase
     private readonly IMongoCollection<AccountGroup> _accountGroupCollection;
     private readonly IMongoCollection<UploadedMedia> _uploadedMediaCollection;
     private readonly TextWrapperClient  _textWrapperClient;
+    private readonly PostThreadManagerRemoteService.PostThreadManagerRemoteServiceClient _postThreadManagerClient;
 
-    public PostThreadApiController(SlabMongoService mongoService, TextWrapperService textWrapperService)
+    public PostThreadApiController(SlabMongoService mongoService, TextWrapperService textWrapperService,
+        PostThreadManagerRemoteService.PostThreadManagerRemoteServiceClient postThreadManagerClient)
     {
         _postThreadCollection = mongoService.GetCollection<PostThread>("threads");
         _accountGroupCollection = mongoService.GetCollection<AccountGroup>("accounts");
         _uploadedMediaCollection = mongoService.GetCollection<UploadedMedia>("media");
         _textWrapperClient =  textWrapperService.Client;
+        _postThreadManagerClient = postThreadManagerClient;
     }
 
     [HttpGet]
@@ -313,6 +319,38 @@ public class PostThreadApiController : ControllerBase
         postThreadApi.TransferApiToCommon(postThread);
 
         _postThreadCollection.ReplaceOne(Builders<PostThread>.Filter.Eq(p => p._id, postThread._id), postThread);
+
+        return Ok();
+    }
+
+    [HttpPost]
+    [Route("/api/v1/thread/{threadId}/delete")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> DeletePostThreadFromSocialPlatforms(string threadId)
+    {
+        try
+        {
+            await _postThreadManagerClient.DeletePostThreadFromSocialPlatformsAsync(
+                new DeletePostThreadFromSocialPlatformsRequest
+                {
+                    ThreadId = threadId
+                });
+        }
+        catch (RpcException e) when (e.StatusCode == GrpcStatusCode.InvalidArgument)
+        {
+            return Problem(e.Status.Detail, statusCode: 400);
+        }
+        catch (RpcException e) when (e.StatusCode == GrpcStatusCode.NotFound)
+        {
+            return Problem(e.Status.Detail, statusCode: 404);
+        }
+        catch (RpcException e)
+        {
+            return Problem(e.Status.Detail, statusCode: 500);
+        }
 
         return Ok();
     }

@@ -28,6 +28,11 @@ public class BbWebApplication : SlabWebApplication
             string coreServiceUrl = appBuilder.Configuration.GetValue<string>("Grpc:CoreUrl") ?? "http://core";
             options.Address = new Uri(coreServiceUrl);
         });
+        appBuilder.Services.AddGrpcClient<PostThreadManagerRemoteService.PostThreadManagerRemoteServiceClient>(options =>
+        {
+            string coreServiceUrl = appBuilder.Configuration.GetValue<string>("Grpc:CoreUrl") ?? "http://core";
+            options.Address = new Uri(coreServiceUrl);
+        });
 
         appBuilder.RegisterMongo(b => b
             .AddCollection<AccountGroup>("accounts")
