@@ -6,7 +6,7 @@ namespace BlueBirdDX.WebApp.Pages;
 
 public class AccountThreadsCallback : PageModel
 {
-    private readonly ThreadsAuthorizationService _threadsAuthorizationService;
+    private readonly SocialAppAuthorizationService _authorizationService;
 
     public string AuthorizationResult
     {
@@ -14,9 +14,9 @@ public class AccountThreadsCallback : PageModel
         private set;
     } = string.Empty;
 
-    public AccountThreadsCallback(ThreadsAuthorizationService threadsAuthorizationService)
+    public AccountThreadsCallback(SocialAppAuthorizationService authorizationService)
     {
-        _threadsAuthorizationService = threadsAuthorizationService;
+        _authorizationService = authorizationService;
     }
 
     public async Task<IActionResult> OnGet(string state, string code, string? error = null,
@@ -27,7 +27,7 @@ public class AccountThreadsCallback : PageModel
         {
             try
             {
-                await _threadsAuthorizationService.AuthorizeByCallback(state, code);
+                await _authorizationService.AuthorizeThreadsByCallback(state, code);
 
                 AuthorizationResult = "OK";
             }

@@ -10,14 +10,14 @@ namespace BlueBirdDX.WebApp.Pages;
 
 public class AccountThreadsAuthorize : PageModel
 {
-    private readonly ThreadsAuthorizationService _threadsAuthorizationService;
+    private readonly SocialAppAuthorizationService _authorizationService;
 
     public readonly IMongoCollection<AccountGroup> AccountGroupCollection;
 
     public AccountThreadsAuthorize(SlabMongoService mongoService,
-        ThreadsAuthorizationService threadsAuthorizationService)
+        SocialAppAuthorizationService authorizationService)
     {
-        _threadsAuthorizationService = threadsAuthorizationService;
+        _authorizationService = authorizationService;
 
         AccountGroupCollection = mongoService.GetCollection<AccountGroup>("accounts");
     }
@@ -41,7 +41,7 @@ public class AccountThreadsAuthorize : PageModel
             return BadRequest("Invalid group ID");
         }
 
-        string url = await _threadsAuthorizationService.CreateAuthorizationAttemptUrl(groupId);
+        string url = await _authorizationService.CreateThreadsAuthorizationAttemptUrl(groupId);
         
         return Redirect(url);
     }

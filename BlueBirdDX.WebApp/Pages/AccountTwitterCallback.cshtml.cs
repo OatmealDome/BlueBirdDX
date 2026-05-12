@@ -6,7 +6,7 @@ namespace BlueBirdDX.WebApp.Pages;
 
 public class AccountTwitterCallback : PageModel
 {
-    private readonly TwitterAuthorizationService _twitterAuthorizationService;
+    private readonly SocialAppAuthorizationService _authorizationService;
 
     public string AuthorizationResult
     {
@@ -14,9 +14,9 @@ public class AccountTwitterCallback : PageModel
         private set;
     } = string.Empty;
 
-    public AccountTwitterCallback(TwitterAuthorizationService twitterAuthorizationService)
+    public AccountTwitterCallback(SocialAppAuthorizationService authorizationService)
     {
-        _twitterAuthorizationService = twitterAuthorizationService;
+        _authorizationService = authorizationService;
     }
 
     public async Task<IActionResult> OnGet(string state, string code, string? error = null)
@@ -25,7 +25,7 @@ public class AccountTwitterCallback : PageModel
         {
             try
             {
-                await _twitterAuthorizationService.AuthorizeByCallback(state, code);
+                await _authorizationService.AuthorizeTwitterByCallback(state, code);
 
                 AuthorizationResult = "OK";
             }

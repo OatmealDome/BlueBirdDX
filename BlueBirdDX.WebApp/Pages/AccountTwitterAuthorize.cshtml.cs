@@ -11,14 +11,14 @@ namespace BlueBirdDX.WebApp.Pages;
 
 public class AccountTwitterAuthorize : PageModel
 {
-    private readonly TwitterAuthorizationService _twitterAuthorizationService;
+    private readonly SocialAppAuthorizationService _authorizationService;
 
     public readonly IMongoCollection<AccountGroup> AccountGroupCollection;
 
     public AccountTwitterAuthorize(SlabMongoService mongoService,
-        TwitterAuthorizationService twitterAuthorizationService)
+        SocialAppAuthorizationService authorizationService)
     {
-        _twitterAuthorizationService = twitterAuthorizationService;
+        _authorizationService = authorizationService;
 
         AccountGroupCollection = mongoService.GetCollection<AccountGroup>("accounts");
     }
@@ -42,7 +42,7 @@ public class AccountTwitterAuthorize : PageModel
             return BadRequest("Invalid group ID");
         }
 
-        string url = await _twitterAuthorizationService.CreateAuthorizationAttemptUrl(groupId);
+        string url = await _authorizationService.CreateTwitterAuthorizationAttemptUrl(groupId);
         
         return Redirect(url);
     }
