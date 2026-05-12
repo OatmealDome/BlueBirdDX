@@ -40,6 +40,26 @@ public class TwitterClient
         _httpClient.DefaultRequestHeaders.Add("User-Agent", $"BlueBirdDX/1.0.0");
     }
 
+    public static string GenerateOAuth2AuthorizeUrl(string clientId, string redirectUrl, string state,
+        string challenge, string scope)
+    {
+        Dictionary<string, string> urlParameters = new Dictionary<string, string>()
+        {
+            { "response_type", "code" },
+            { "client_id", clientId},
+            { "redirect_uri", redirectUrl },
+            { "state", state },
+            { "code_challenge", challenge },
+            { "code_challenge_method", "S256" },
+            { "scope", scope }
+        };
+        
+        FormUrlEncodedContent formUrlEncodedContent = new FormUrlEncodedContent(urlParameters);
+        string urlParametersEncoded = formUrlEncodedContent.ReadAsStringAsync().Result;
+            
+        return $"https://x.com/i/oauth2/authorize?{urlParametersEncoded}";
+    }
+
     private async Task<HttpResponseMessage> SendRequestToOAuth2Endpoint(string endpoint,
         Dictionary<string, string> contentDict)
     {

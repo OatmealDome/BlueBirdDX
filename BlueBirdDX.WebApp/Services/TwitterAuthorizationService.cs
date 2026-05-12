@@ -12,6 +12,8 @@ namespace BlueBirdDX.WebApp.Services;
 
 public class TwitterAuthorizationService
 {
+    private const string OAuth2Scope = "tweet.read tweet.write users.read media.write offline.access";
+
     private readonly TwitterAuthorizationSettings _settings;
     private readonly IMongoCollection<AccountGroup> _accountCollection;
     private readonly Dictionary<string, TwitterAuthorizationState> _states =
@@ -46,22 +48,9 @@ public class TwitterAuthorizationService
             };
             
             _states[stateId] = state;
-            
-            Dictionary<string, string> urlParameters = new Dictionary<string, string>()
-            {
-                { "response_type", "code" },
-                { "client_id", _settings.ClientId },
-                { "redirect_uri", _settings.RedirectUrl },
-                { "state", state.Id },
-                { "code_challenge", state.Challenge },
-                { "code_challenge_method", "S256" },
-                { "scope", "tweet.read tweet.write users.read media.write offline.access"}
-            };
-        
-            FormUrlEncodedContent formUrlEncodedContent = new FormUrlEncodedContent(urlParameters);
-            string urlParametersEncoded = await formUrlEncodedContent.ReadAsStringAsync();
-            
-            return $"https://x.com/i/oauth2/authorize?{urlParametersEncoded}";
+
+            return TwitterClient.GenerateOAuth2AuthorizeUrl(_settings.ClientId, _settings.RedirectUrl, state.Id,
+                state.Challenge, OAuth2Scope);
         }
         finally
         {
