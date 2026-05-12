@@ -29,12 +29,15 @@ jobs:
 
       - name: Build (.NET)
         run: dotnet build --configuration Release --no-restore
+
   docker-build:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: Build Core
         uses: docker/build-push-action@v5
         with:
