@@ -7,13 +7,13 @@ namespace BlueBirdDX.WebApp.Services;
 
 public class ThreadsAuthorizationService
 {
-    private readonly ThreadsAuthorizationSettings _settings;
+    private readonly SocialAppAuthorizationSettings _settings;
     private readonly SocialAppAuthorization.SocialAppAuthorizationClient _authorizationClient;
     private readonly Dictionary<string, ThreadsAuthorizationState> _states =
         new Dictionary<string, ThreadsAuthorizationState>();
     private readonly SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1, 1);
 
-    public ThreadsAuthorizationService(IOptions<ThreadsAuthorizationSettings> settings,
+    public ThreadsAuthorizationService(IOptions<SocialAppAuthorizationSettings> settings,
         SocialAppAuthorization.SocialAppAuthorizationClient authorizationClient)
     {
         _settings = settings.Value;
@@ -39,7 +39,7 @@ public class ThreadsAuthorizationService
             CreateAuthorizationUrlReply reply = await _authorizationClient.CreateThreadsAuthorizationUrlAsync(
                 new CreateThreadsAuthorizationUrlRequest
                 {
-                    RedirectUrl = _settings.RedirectUrl!,
+                    RedirectUrl = CreateCallbackUrl(),
                     State = stateId
                 });
 
@@ -63,7 +63,7 @@ public class ThreadsAuthorizationService
             {
                 GroupId = authorizationState.GroupId,
                 Code = code,
-                RedirectUrl = _settings.RedirectUrl!
+                RedirectUrl = CreateCallbackUrl()
             });
 
             _states.Remove(state);
@@ -78,5 +78,10 @@ public class ThreadsAuthorizationService
     {
         const string characterPool = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
         return RandomNumberGenerator.GetString(characterPool, length);
+    }
+
+    private string CreateCallbackUrl()
+    {
+        return $"{_settings.BaseUrl.TrimEnd('/')}/account/threads/callback";
     }
 }

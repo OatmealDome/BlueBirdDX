@@ -8,13 +8,13 @@ namespace BlueBirdDX.WebApp.Services;
 
 public class TwitterAuthorizationService
 {
-    private readonly TwitterAuthorizationSettings _settings;
+    private readonly SocialAppAuthorizationSettings _settings;
     private readonly SocialAppAuthorization.SocialAppAuthorizationClient _authorizationClient;
     private readonly Dictionary<string, TwitterAuthorizationState> _states =
         new Dictionary<string, TwitterAuthorizationState>();
     private readonly SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1, 1);
 
-    public TwitterAuthorizationService(IOptions<TwitterAuthorizationSettings> settings,
+    public TwitterAuthorizationService(IOptions<SocialAppAuthorizationSettings> settings,
         SocialAppAuthorization.SocialAppAuthorizationClient authorizationClient)
     {
         _settings = settings.Value;
@@ -47,7 +47,7 @@ public class TwitterAuthorizationService
             CreateAuthorizationUrlReply reply = await _authorizationClient.CreateTwitterAuthorizationUrlAsync(
                 new CreateTwitterAuthorizationUrlRequest
                 {
-                    RedirectUrl = _settings.RedirectUrl,
+                    RedirectUrl = CreateCallbackUrl(),
                     State = state.Id,
                     Challenge = state.Challenge
                 });
@@ -73,7 +73,7 @@ public class TwitterAuthorizationService
                 GroupId = authorizationState.GroupId,
                 Code = code,
                 Verifier = authorizationState.Verifier,
-                RedirectUrl = _settings.RedirectUrl
+                RedirectUrl = CreateCallbackUrl()
             });
 
             _states.Remove(state);
@@ -82,5 +82,10 @@ public class TwitterAuthorizationService
         {
             _semaphoreSlim.Release();
         }
+    }
+
+    private string CreateCallbackUrl()
+    {
+        return $"{_settings.BaseUrl.TrimEnd('/')}/account/twitter/callback";
     }
 }

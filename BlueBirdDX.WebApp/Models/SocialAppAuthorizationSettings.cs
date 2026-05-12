@@ -1,8 +1,8 @@
 namespace BlueBirdDX.WebApp.Models;
 
-public class TwitterAuthorizationSettings
+public class SocialAppAuthorizationSettings
 {
-    public string RedirectUrl
+    public string BaseUrl
     {
         get;
         set;
