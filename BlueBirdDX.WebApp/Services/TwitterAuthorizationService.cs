@@ -1,29 +1,24 @@
 using System.Security.Cryptography;
 using System.Text;
-using BlueBirdDX.Common.Account;
-using BlueBirdDX.Platform.Twitter;
+using BlueBirdDX.Grpc;
 using BlueBirdDX.WebApp.Models;
 using Microsoft.Extensions.Options;
-using MongoDB.Bson;
-using MongoDB.Driver;
-using OatmealDome.Slab.Mongo;
 
 namespace BlueBirdDX.WebApp.Services;
 
 public class TwitterAuthorizationService
 {
-    private const string OAuth2Scope = "tweet.read tweet.write users.read media.write offline.access";
-
     private readonly TwitterAuthorizationSettings _settings;
-    private readonly IMongoCollection<AccountGroup> _accountCollection;
+    private readonly SocialAppAuthorization.SocialAppAuthorizationClient _authorizationClient;
     private readonly Dictionary<string, TwitterAuthorizationState> _states =
         new Dictionary<string, TwitterAuthorizationState>();
     private readonly SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1, 1);
 
-    public TwitterAuthorizationService(IOptions<TwitterAuthorizationSettings> settings, SlabMongoService mongoService)
+    public TwitterAuthorizationService(IOptions<TwitterAuthorizationSettings> settings,
+        SocialAppAuthorization.SocialAppAuthorizationClient authorizationClient)
     {
         _settings = settings.Value;
-        _accountCollection = mongoService.GetCollection<AccountGroup>("accounts");
+        _authorizationClient = authorizationClient;
     }
 
     public async Task<string> CreateAuthorizationAttemptUrl(string groupId)
@@ -49,8 +44,15 @@ public class TwitterAuthorizationService
             
             _states[stateId] = state;
 
-            return TwitterClient.GenerateOAuth2AuthorizeUrl(_settings.ClientId, _settings.RedirectUrl, state.Id,
-                state.Challenge, OAuth2Scope);
+            CreateAuthorizationUrlReply reply = await _authorizationClient.CreateTwitterAuthorizationUrlAsync(
+                new CreateTwitterAuthorizationUrlRequest
+                {
+                    RedirectUrl = _settings.RedirectUrl,
+                    State = state.Id,
+                    Challenge = state.Challenge
+                });
+
+            return reply.Url;
         }
         finally
         {
@@ -66,18 +68,13 @@ public class TwitterAuthorizationService
         {
             TwitterAuthorizationState authorizationState = _states[state];
 
-            ObjectId groupId = ObjectId.Parse(authorizationState.GroupId);
-            AccountGroup group = _accountCollection.AsQueryable().FirstOrDefault(g => g._id == groupId)!;
-
-            TwitterClient client = new TwitterClient(_settings.ClientId, _settings.ClientSecret);
-            await client.LoginWithCodeAndVerifier(code, authorizationState.Verifier, _settings.RedirectUrl);
-
-            group.Twitter = new TwitterAccount()
+            await _authorizationClient.AuthorizeTwitterCallbackAsync(new AuthorizeTwitterCallbackRequest
             {
-                RefreshToken = client.RefreshToken!
-            };
-
-            await _accountCollection.ReplaceOneAsync(Builders<AccountGroup>.Filter.Eq("_id", groupId), group);
+                GroupId = authorizationState.GroupId,
+                Code = code,
+                Verifier = authorizationState.Verifier,
+                RedirectUrl = _settings.RedirectUrl
+            });
 
             _states.Remove(state);
         }

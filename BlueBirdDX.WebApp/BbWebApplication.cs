@@ -1,6 +1,7 @@
 using BlueBirdDX.Common.Account;
 using BlueBirdDX.Common.Media;
 using BlueBirdDX.Common.Post;
+using BlueBirdDX.Grpc;
 using BlueBirdDX.WebApp.Models;
 using BlueBirdDX.WebApp.Services;
 using OatmealDome.Slab;
@@ -17,6 +18,11 @@ public class BbWebApplication : SlabWebApplication
     protected override void BuildApplication(ISlabApplicationBuilder appBuilder)
     {
         appBuilder.Services.AddRazorPages();
+        appBuilder.Services.AddGrpcClient<SocialAppAuthorization.SocialAppAuthorizationClient>(options =>
+        {
+            string coreServiceUrl = appBuilder.Configuration.GetValue<string>("Grpc:CoreUrl") ?? "http://core";
+            options.Address = new Uri(coreServiceUrl);
+        });
 
         appBuilder.RegisterMongo(b => b
             .AddCollection<AccountGroup>("accounts")

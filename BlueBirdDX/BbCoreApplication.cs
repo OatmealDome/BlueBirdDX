@@ -5,6 +5,7 @@ using BlueBirdDX.Database;
 using BlueBirdDX.Database.Migration.AccountGroup;
 using BlueBirdDX.Database.Migration.PostThread;
 using BlueBirdDX.Database.Migration.UploadedMedia;
+using BlueBirdDX.Grpc;
 using BlueBirdDX.Media;
 using BlueBirdDX.Social;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -89,6 +90,7 @@ public class BbCoreApplication : SlabWebApplication
 
     protected override void SetupApplication(WebApplication app)
     {
+        app.MapGrpcService<SocialAppAuthorizationGrpcService>();
         app.MapGet("/", () => "OK");
     }
 }

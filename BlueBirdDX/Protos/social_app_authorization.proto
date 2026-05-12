@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+option csharp_namespace = "BlueBirdDX.Grpc";
+
+package bluebirddx.grpc;
+
+service SocialAppAuthorization {
+  rpc CreateTwitterAuthorizationUrl (CreateTwitterAuthorizationUrlRequest) returns (CreateAuthorizationUrlReply);
+  rpc AuthorizeTwitterCallback (AuthorizeTwitterCallbackRequest) returns (AuthorizeCallbackReply);
+  rpc CreateThreadsAuthorizationUrl (CreateThreadsAuthorizationUrlRequest) returns (CreateAuthorizationUrlReply);
+  rpc AuthorizeThreadsCallback (AuthorizeThreadsCallbackRequest) returns (AuthorizeCallbackReply);
+}
+
+message CreateTwitterAuthorizationUrlRequest {
+  string redirect_url = 1;
+  string state = 2;
+  string challenge = 3;
+}
+
+message CreateAuthorizationUrlReply {
+  string url = 1;
+}
+
+message AuthorizeTwitterCallbackRequest {
+  string group_id = 1;
+  string code = 2;
+  string verifier = 3;
+  string redirect_url = 4;
+}
+
+message AuthorizeCallbackReply {
+}
+
+message CreateThreadsAuthorizationUrlRequest {
+  string redirect_url = 1;
+  string state = 2;
+}
+
+message AuthorizeThreadsCallbackRequest {
+  string group_id = 1;
+  string code = 2;
+  string redirect_url = 3;
+}

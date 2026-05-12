@@ -1,27 +1,23 @@
 using System.Security.Cryptography;
-using BlueBirdDX.Common.Account;
+using BlueBirdDX.Grpc;
 using BlueBirdDX.WebApp.Models;
 using Microsoft.Extensions.Options;
-using MongoDB.Bson;
-using MongoDB.Driver;
-using OatmealDome.Slab.Mongo;
-using OatmealDome.Unravel;
-using OatmealDome.Unravel.Authentication;
 
 namespace BlueBirdDX.WebApp.Services;
 
 public class ThreadsAuthorizationService
 {
     private readonly ThreadsAuthorizationSettings _settings;
-    private readonly IMongoCollection<AccountGroup> _accountCollection;
+    private readonly SocialAppAuthorization.SocialAppAuthorizationClient _authorizationClient;
     private readonly Dictionary<string, ThreadsAuthorizationState> _states =
         new Dictionary<string, ThreadsAuthorizationState>();
     private readonly SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1, 1);
 
-    public ThreadsAuthorizationService(IOptions<ThreadsAuthorizationSettings> settings, SlabMongoService mongoService)
+    public ThreadsAuthorizationService(IOptions<ThreadsAuthorizationSettings> settings,
+        SocialAppAuthorization.SocialAppAuthorizationClient authorizationClient)
     {
         _settings = settings.Value;
-        _accountCollection = mongoService.GetCollection<AccountGroup>("accounts");
+        _authorizationClient = authorizationClient;
     }
 
     public async Task<string> CreateAuthorizationAttemptUrl(string groupId)
@@ -40,9 +36,14 @@ public class ThreadsAuthorizationService
             
             _states[stateId] = state;
 
-            return ThreadsClient.Auth_GetUserOAuthAuthorizationUrl(_settings.AppId!.Value, _settings.RedirectUrl!,
-                ThreadsPermission.Basic | ThreadsPermission.ContentPublish | ThreadsPermission.ManageReplies |
-                ThreadsPermission.Delete, stateId);
+            CreateAuthorizationUrlReply reply = await _authorizationClient.CreateThreadsAuthorizationUrlAsync(
+                new CreateThreadsAuthorizationUrlRequest
+                {
+                    RedirectUrl = _settings.RedirectUrl!,
+                    State = stateId
+                });
+
+            return reply.Url;
         }
         finally
         {
@@ -57,22 +58,13 @@ public class ThreadsAuthorizationService
         try
         {
             ThreadsAuthorizationState authorizationState = _states[state];
-
-            ObjectId groupId = ObjectId.Parse(authorizationState.GroupId);
-            AccountGroup group = _accountCollection.AsQueryable().FirstOrDefault(g => g._id == groupId)!;
             
-            ThreadsClient client = new ThreadsClient(_settings.AppId!.Value, _settings.AppSecret!);
-            await client.Auth_GetShortLivedAccessToken(code, _settings.RedirectUrl!);
-            await client.Auth_GetLongLivedAccessToken();
-
-            group.Threads = new ThreadsAccount()
+            await _authorizationClient.AuthorizeThreadsCallbackAsync(new AuthorizeThreadsCallbackRequest
             {
-                AccessToken = client.Credentials!.AccessToken,
-                Expiry = client.Credentials.Expiry,
-                UserId = client.Credentials.UserId,
-            };
-
-            await _accountCollection.ReplaceOneAsync(Builders<AccountGroup>.Filter.Eq("_id", groupId), group);
+                GroupId = authorizationState.GroupId,
+                Code = code,
+                RedirectUrl = _settings.RedirectUrl!
+            });
 
             _states.Remove(state);
         }
