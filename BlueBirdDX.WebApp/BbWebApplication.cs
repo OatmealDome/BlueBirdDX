@@ -23,6 +23,11 @@ public class BbWebApplication : SlabWebApplication
             string coreServiceUrl = appBuilder.Configuration.GetValue<string>("Grpc:CoreUrl") ?? "http://core";
             options.Address = new Uri(coreServiceUrl);
         });
+        appBuilder.Services.AddGrpcClient<MediaUploadJobs.MediaUploadJobsClient>(options =>
+        {
+            string coreServiceUrl = appBuilder.Configuration.GetValue<string>("Grpc:CoreUrl") ?? "http://core";
+            options.Address = new Uri(coreServiceUrl);
+        });
 
         appBuilder.RegisterMongo(b => b
             .AddCollection<AccountGroup>("accounts")
@@ -34,9 +39,6 @@ public class BbWebApplication : SlabWebApplication
         
         appBuilder.RegisterConfiguration<TextWrapperSettings>("TextWrapper");
         appBuilder.RegisterSingleton<TextWrapperService>();
-        
-        appBuilder.RegisterConfiguration<NotificationSettings>("Notifications");
-        appBuilder.RegisterSingleton<NotificationService>();
         
         appBuilder.RegisterConfiguration<SocialAppAuthorizationSettings>("SocialAppAuthorization");
         appBuilder.RegisterSingleton<SocialAppAuthorizationService>();

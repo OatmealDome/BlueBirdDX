@@ -1,11 +1,10 @@
 using Amazon.S3;
 using BlueBirdDX.Common.Media;
 using BlueBirdDX.Api;
-using BlueBirdDX.WebApp.Services;
+using BlueBirdDX.Grpc;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using MongoDB.Driver;
-using NATS.Net;
 using OatmealDome.Slab.Mongo;
 using OatmealDome.Slab.S3;
 using SixLabors.ImageSharp;
@@ -20,15 +19,15 @@ public class UploadedMediaApiController : ControllerBase
     private readonly IMongoCollection<UploadedMedia> _uploadedMediaCollection;
     private readonly IMongoCollection<MediaUploadJob> _mediaUploadJobCollection;
     private readonly SlabS3Service _s3Service;
-    private readonly NatsClient _natsClient;
+    private readonly MediaUploadJobs.MediaUploadJobsClient _mediaUploadJobsClient;
 
     public UploadedMediaApiController(SlabMongoService mongoService, SlabS3Service s3Service,
-        NotificationService notification)
+        MediaUploadJobs.MediaUploadJobsClient mediaUploadJobsClient)
     {
         _uploadedMediaCollection = mongoService.GetCollection<UploadedMedia>("media");
         _mediaUploadJobCollection = mongoService.GetCollection<MediaUploadJob>("media_jobs");
         _s3Service = s3Service;
-        _natsClient = notification.Client;
+        _mediaUploadJobsClient = mediaUploadJobsClient;
     }
     
     [HttpGet]
@@ -104,14 +103,14 @@ public class UploadedMediaApiController : ControllerBase
 
         MediaUploadJob uploadJob = CreateMediaUploadJob(name, format.DefaultMimeType, altText ?? "");
 
-        _s3Service.TransferFile("unprocessed_media/" + uploadJob._id.ToString(), memoryStream.ToArray());
+        await _s3Service.TransferFile("unprocessed_media/" + uploadJob._id.ToString(), memoryStream.ToArray());
         
         uploadJob.State = MediaUploadJobState.Ready;
 
         _mediaUploadJobCollection.ReplaceOne(Builders<MediaUploadJob>.Filter.Eq(j => j._id, uploadJob._id),
             uploadJob);
         
-        await _natsClient.PublishAsync("media.jobs.ready", uploadJob._id.ToString());
+        await ProcessReadyMediaUploadJob(uploadJob._id);
         
         // Waiting isn't great, but I'm not sure how else to implement this.
         while (uploadJob.State != MediaUploadJobState.Success && uploadJob.State != MediaUploadJobState.Failed)
@@ -177,9 +176,20 @@ public class UploadedMediaApiController : ControllerBase
 
         await _mediaUploadJobCollection.ReplaceOneAsync(Builders<MediaUploadJob>.Filter.Eq(j => j._id, job._id), job);
 
-        await _natsClient.PublishAsync("media.jobs.ready", job._id.ToString());
+        if (job.State == MediaUploadJobState.Ready)
+        {
+            await ProcessReadyMediaUploadJob(job._id);
+        }
         
         return Ok();
+    }
+
+    private async Task ProcessReadyMediaUploadJob(ObjectId jobId)
+    {
+        await _mediaUploadJobsClient.ProcessReadyMediaUploadJobAsync(new ProcessReadyMediaUploadJobRequest
+        {
+            JobId = jobId.ToString()
+        });
     }
 
     [HttpGet]

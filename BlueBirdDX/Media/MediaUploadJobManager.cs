@@ -9,8 +9,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MongoDB.Bson;
 using MongoDB.Driver;
-using NATS.Client.Core;
-using NATS.Net;
 using OatmealDome.Slab.Mongo;
 using OatmealDome.Slab.S3;
 using SixLabors.ImageSharp;
@@ -46,7 +44,6 @@ public class MediaUploadJobManager : BackgroundService
     
     private readonly ILogger<MediaUploadJobManager> _logger;
     private readonly MediaUploadJobManagerConfiguration _settings;
-    private readonly NatsClient _natsClient;
     private readonly SlabS3Service _s3Service;
     private readonly IMongoCollection<MediaUploadJob> _uploadJobCollection;
     private readonly IMongoCollection<UploadedMedia> _mediaCollection;
@@ -59,7 +56,6 @@ public class MediaUploadJobManager : BackgroundService
     {
         _logger = logger;
         _settings = settings.Value;
-        _natsClient = new NatsClient(_settings.NatsServer);
         _s3Service = s3Service;
         _uploadJobCollection = mongoService.GetCollection<MediaUploadJob>("media_jobs");
         _mediaCollection = mongoService.GetCollection<UploadedMedia>("media");
@@ -79,8 +75,6 @@ public class MediaUploadJobManager : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         await ProcessAllWaitingReadyMediaJobs();
-
-        await ListenForReadyMediaJobs();
     }
     
     private async Task<byte[]> ProcessImage(UploadedMedia media, byte[] imageData,
@@ -394,31 +388,39 @@ public class MediaUploadJobManager : BackgroundService
         _logger.LogInformation("All waiting media jobs have been processed");
     }
 
-    public async Task ListenForReadyMediaJobs()
+    public void ProcessReadyMediaJob(ObjectId jobId)
     {
-        await foreach (NatsMsg<string> message in _natsClient.SubscribeAsync<string>("media.jobs.ready"))
+        MediaUploadJob? uploadJob = _uploadJobCollection.AsQueryable().FirstOrDefault(j => j._id == jobId);
+
+        if (uploadJob == null)
         {
-            ObjectId objectId = ObjectId.Parse(message.Data);
-            MediaUploadJob uploadJob = _uploadJobCollection.AsQueryable().FirstOrDefault(j => j._id == objectId)!;
-
-            _ = Task.Run(async () =>
-            {
-                await _semaphore.WaitAsync();
-
-                try
-                {
-                    await ProcessMediaJob(uploadJob);
-                }
-                catch (Exception e)
-                {
-                    _logger.LogError(e, "Unexpected error during processing a ready job");
-                }
-                finally
-                {
-                    _semaphore.Release();
-                }
-            });
+            throw new KeyNotFoundException($"Media upload job {jobId.ToString()} was not found");
         }
+        
+        if (uploadJob.State != MediaUploadJobState.Ready)
+        {
+            _logger.LogWarning("Ignoring media job {jobId} because it is in {state} state", jobId.ToString(),
+                uploadJob.State);
+            return;
+        }
+
+        _ = Task.Run(async () =>
+        {
+            await _semaphore.WaitAsync();
+
+            try
+            {
+                await ProcessMediaJob(uploadJob);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Unexpected error during processing media job {JobId}", uploadJob._id.ToString());
+            }
+            finally
+            {
+                _semaphore.Release();
+            }
+        });
     }
 
     private async Task CleanUpOldJob(MediaUploadJob uploadJob)

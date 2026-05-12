@@ -27,12 +27,12 @@
       <PackageReference Include="Google.Protobuf" Version="3.28.2" />
       <PackageReference Include="Grpc.Net.ClientFactory" Version="2.66.0" />
       <PackageReference Include="Grpc.Tools" Version="2.66.0" PrivateAssets="All" />
-      <PackageReference Include="NATS.Net" Version="2.5.5" />
       <PackageReference Include="SixLabors.ImageSharp" Version="3.1.4" />
     </ItemGroup>
 
     <ItemGroup>
       <Protobuf Include="..\BlueBirdDX\Protos\social_app_authorization.proto" Link="Protos\social_app_authorization.proto" GrpcServices="Client" />
+      <Protobuf Include="..\BlueBirdDX\Protos\media_upload_jobs.proto" Link="Protos\media_upload_jobs.proto" GrpcServices="Client" />
     </ItemGroup>
 
 </Project>

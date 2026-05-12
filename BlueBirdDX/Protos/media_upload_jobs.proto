@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+option csharp_namespace = "BlueBirdDX.Grpc";
+
+package bluebirddx.grpc;
+
+service MediaUploadJobs {
+  rpc ProcessReadyMediaUploadJob (ProcessReadyMediaUploadJobRequest) returns (ProcessReadyMediaUploadJobReply);
+}
+
+message ProcessReadyMediaUploadJobRequest {
+  string job_id = 1;
+}
+
+message ProcessReadyMediaUploadJobReply {
+}
