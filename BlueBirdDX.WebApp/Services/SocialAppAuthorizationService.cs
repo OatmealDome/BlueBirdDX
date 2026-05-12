@@ -29,8 +29,8 @@ public class SocialAppAuthorizationService
 
         try
         {
-            string stateId = AuthorizationUtil.GenerateRandomString(256);
-            string verifier = AuthorizationUtil.GenerateRandomString(128);
+            string stateId = GenerateRandomString(256);
+            string verifier = GenerateRandomString(128);
 
             using HashAlgorithm shaAlgorithm = SHA256.Create();
             byte[] verifierHash = shaAlgorithm.ComputeHash(Encoding.UTF8.GetBytes(verifier));
