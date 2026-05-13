@@ -66,6 +66,24 @@
     <a class="btn btn-success" href="#header" role="button">⏫</a>
 </div>
 
+<!-- Delete confirmation modal -->
+<div id="delete-confirmation-modal" class="modal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Thread</h5>
+            </div>
+            <div class="modal-body">
+                <p id="delete-confirmation-element">Are you sure that you want to delete the thread?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Abort</button>
+                <button id="delete-confirmation-delete-button" type="button" class="btn btn-danger">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Deleting modal -->
 <div id="deleting-modal" class="modal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
@@ -117,6 +135,8 @@
 @section Scripts
 {
     <script>
+        let pendingDeleteThreadId = null;
+
         function repopulateTable(response) {
             for (const thread of response) {
                 let row = "<tr><td>" + thread.name + "</td><td>" + thread.state + "</td><td>";
@@ -156,11 +176,8 @@
             $("#deleting-modal").modal("hide");
         }
 
-        $("tbody").on("click", ".delete-posts-link", function (event) {
-            event.preventDefault();
-
-            const threadId = $(this).data("thread-id");
-
+        function deleteThread(threadId) {
+            $("#delete-confirmation-modal").modal("hide");
             $("#deleting-modal").modal("show");
 
             $.ajax({
@@ -179,6 +196,23 @@
 
                 showDeleteResult("Deletion Failed", message);
             });
+        }
+
+        $("tbody").on("click", ".delete-posts-link", function (event) {
+            event.preventDefault();
+
+            pendingDeleteThreadId = $(this).data("thread-id");
+
+            const threadName = $(this).closest("tr").find("td:first").text();
+            $("#delete-confirmation-element").text("Are you sure that you want to delete the thread " + threadName + "?");
+            $("#delete-confirmation-modal").modal("show");
+        });
+
+        $("#delete-confirmation-delete-button").click(function () {
+            if (pendingDeleteThreadId) {
+                deleteThread(pendingDeleteThreadId);
+                pendingDeleteThreadId = null;
+            }
         });
         
         $("#loadAllCheck").change(function () {
