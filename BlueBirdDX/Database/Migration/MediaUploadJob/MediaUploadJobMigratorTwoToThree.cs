@@ -3,10 +3,10 @@ using OatmealDome.Slab.Mongo;
 
 namespace BlueBirdDX.Database.Migration.MediaUploadJob;
 
-public class MediaUploadJobMigratorOneToTwo : SlabMongoDocumentMigrator<Common.Media.MediaUploadJob>
+public class MediaUploadJobMigratorTwoToThree : SlabMongoDocumentMigrator<Common.Media.MediaUploadJob>
 {
-    public override int OldSchemaVersion => 1;
-    public override int NewSchemaVersion => 2;
+    public override int OldSchemaVersion => 2;
+    public override int NewSchemaVersion => 3;
 
     public override Task MigrateDocument(BsonDocument document)
     {
