@@ -178,6 +178,7 @@
 
         function deleteThread(threadId) {
             $("#delete-confirmation-modal").modal("hide");
+            $("#deleting-modal").modal({backdrop: 'static', keyboard: false});
             $("#deleting-modal").modal("show");
 
             $.ajax({
