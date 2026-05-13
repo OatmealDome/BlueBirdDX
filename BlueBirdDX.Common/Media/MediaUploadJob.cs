@@ -5,7 +5,7 @@ namespace BlueBirdDX.Common.Media;
 
 public class MediaUploadJob : SlabMongoDocument
 {
-    public const int LatestSchemaVersion = 2;
+    public const int LatestSchemaVersion = 4;
 
     public string Name
     {
