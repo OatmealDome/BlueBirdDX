@@ -44,7 +44,7 @@ public class UploadedMediaApiController : ControllerBase
     {
         MediaUploadJob uploadJob = new MediaUploadJob()
         {
-            SchemaVersion = UploadedMedia.LatestSchemaVersion,
+            SchemaVersion = MediaUploadJob.LatestSchemaVersion,
             Name = name,
             MimeType = mimeType,
             AltText = altText,
