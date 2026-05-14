@@ -19,4 +19,10 @@ public class PostThreadManagerConfiguration
         get;
         set;
     } = "http://bluebirddxwebapp";
+
+    public bool ShouldUseTextQuoteOnTwitter
+    {
+        get;
+        set;
+    } = false;
 }

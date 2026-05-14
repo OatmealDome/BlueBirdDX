@@ -289,13 +289,22 @@ public class PostThreadManager
                     QuotedPost quotedPost = attachmentCache.GetQuotedPost(item.QuotedPost);
 
                     if (quotedPost.TwitterId != null)
-                    { 
-                        // This is currently blocked by Twitter anti-spam restrictions.
-                        // quotedTweetId = quotedPost.TwitterId;
-                        
-                        // We can bypass the restrictions by inserting the URL into the tweet directly, though this
-                        // uses up part of our character limit.
-                        text += $" https://x.com/_/status/{quotedPost.TwitterId}";
+                    {
+                        // Twitter is supposed to be blocking the use of quote_tweet_id in their API as part of
+                        // their new anti-LLM spam initiative. We can bypass this by inserting the URL into the tweet
+                        // directly, though this uses up part of our character limit. That being said, quoting with
+                        // quote_tweet_id seems to be working again on @OatmealDome for some reason, even though
+                        // usage of it was blocked earlier. This might be because the account now has X Premium,
+                        // but I can't fully confirm this as there is no documentation. Therefore, this flag has been
+                        // added to allow one to enable the workaround if quote_tweet_id stops working again. 
+                        if (_settings.ShouldUseTextQuoteOnTwitter)
+                        {
+                            text += $" https://x.com/_/status/{quotedPost.TwitterId}";
+                        }
+                        else
+                        {
+                            quotedTweetId = quotedPost.TwitterId;  
+                        }
                     }
                     else
                     {
