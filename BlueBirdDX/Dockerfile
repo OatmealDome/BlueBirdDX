@@ -1,4 +1,5 @@
-﻿FROM mcr.microsoft.com/dotnet/runtime:8.0 AS base
+﻿FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+USER $APP_UID
 WORKDIR /app
 
 # --platform=$BUILDPLATFORM is currently required for arm builds: https://github.com/dotnet/sdk/issues/29892#issuecomment-1691521917
