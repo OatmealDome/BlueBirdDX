@@ -24,7 +24,16 @@
       "launchBrowser": true,
       "applicationUrl": "https://localhost:7044;http://localhost:5002",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "Mongo__ConnectionString": "mongodb://bluebirddx:password@127.0.0.1:27018/",
+        "Mongo__Database": "bluebirddx",
+        "S3__ServiceUrl": "https://s3.ca-central-1.wasabisys.com",
+        "S3__Bucket": "omd-bluebirddx-dev",
+        "S3__AccessKey": "KQZAX8KJQXFGLDSPK65T",
+        "S3__SecretAccessKey": "1Zc18OAC34bPmoUrZAdwAMW6LChlE58hn53wmqXW",
+        "TextWrapper__Server": "http://127.0.0.1:3000",
+        "Grpc__CoreUrl": "http://127.0.0.1:9045",
+        "SocialAppAuthorization__BaseUrl": "https://localhost:7044"
       }
     },
     "IIS Express": {

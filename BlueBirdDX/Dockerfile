@@ -19,6 +19,8 @@ RUN dotnet publish "BlueBirdDX.csproj" -c $BUILD_CONFIGURATION -o /app/publish /
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
+USER root
 RUN apt update && apt install -y ffmpeg
+USER $APP_UID
 WORKDIR /data
 ENTRYPOINT ["dotnet", "/app/BlueBirdDX.dll"]
