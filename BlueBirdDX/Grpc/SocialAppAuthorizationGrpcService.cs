@@ -54,8 +54,15 @@ public class SocialAppAuthorizationGrpcService : SocialAppAuthorization.SocialAp
         TwitterClient client = new TwitterClient(_settings.TwitterClientId, _settings.TwitterClientSecret);
         await client.LoginWithCodeAndVerifier(request.Code, request.Verifier, request.RedirectUrl);
 
-        await UpdateAccountGroup(request.GroupId,
-            Builders<AccountGroup>.Update.Set(g => g.Twitter!.RefreshToken, client.RefreshToken!));
+        AccountGroup accountGroup = await GetAccountGroup(request.GroupId);
+        UpdateDefinition<AccountGroup> update = accountGroup.Twitter == null
+            ? Builders<AccountGroup>.Update.Set(g => g.Twitter, new TwitterAccount
+            {
+                RefreshToken = client.RefreshToken!
+            })
+            : Builders<AccountGroup>.Update.Set(g => g.Twitter!.RefreshToken, client.RefreshToken!);
+
+        await UpdateAccountGroup(accountGroup._id, update);
 
         return new AuthorizeCallbackReply();
     }
@@ -92,21 +99,45 @@ public class SocialAppAuthorizationGrpcService : SocialAppAuthorization.SocialAp
         await client.Auth_GetLongLivedAccessToken();
 
         ThreadsCredentials credentials = client.Credentials!;
-        await UpdateAccountGroup(request.GroupId, Builders<AccountGroup>.Update
-            .Set(g => g.Threads!.AccessToken, credentials.AccessToken)
-            .Set(g => g.Threads!.Expiry, credentials.Expiry)
-            .Set(g => g.Threads!.UserId, credentials.UserId));
+        AccountGroup accountGroup = await GetAccountGroup(request.GroupId);
+        UpdateDefinition<AccountGroup> update = accountGroup.Threads == null
+            ? Builders<AccountGroup>.Update.Set(g => g.Threads, new ThreadsAccount
+            {
+                AccessToken = credentials.AccessToken,
+                Expiry = credentials.Expiry,
+                UserId = credentials.UserId
+            })
+            : Builders<AccountGroup>.Update
+                .Set(g => g.Threads!.AccessToken, credentials.AccessToken)
+                .Set(g => g.Threads!.Expiry, credentials.Expiry)
+                .Set(g => g.Threads!.UserId, credentials.UserId);
+
+        await UpdateAccountGroup(accountGroup._id, update);
 
         return new AuthorizeCallbackReply();
     }
 
-    private async Task UpdateAccountGroup(string groupId, UpdateDefinition<AccountGroup> update)
+    private async Task<AccountGroup> GetAccountGroup(string groupId)
     {
         if (!ObjectId.TryParse(groupId, out ObjectId groupObjectId))
         {
             throw new RpcException(new Status(StatusCode.InvalidArgument, "Invalid account group ID"));
         }
 
+        AccountGroup? accountGroup = await _accountCollection
+            .Find(Builders<AccountGroup>.Filter.Eq(g => g._id, groupObjectId))
+            .FirstOrDefaultAsync();
+
+        if (accountGroup == null)
+        {
+            throw new RpcException(new Status(StatusCode.NotFound, "Account group was not found"));
+        }
+
+        return accountGroup;
+    }
+
+    private async Task UpdateAccountGroup(ObjectId groupObjectId, UpdateDefinition<AccountGroup> update)
+    {
         UpdateResult result = await _accountCollection.UpdateOneAsync(
             Builders<AccountGroup>.Filter.Eq(g => g._id, groupObjectId), update);
 
