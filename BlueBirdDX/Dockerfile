@@ -20,4 +20,5 @@ FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 RUN apt update && apt install -y ffmpeg
-ENTRYPOINT ["dotnet", "BlueBirdDX.dll"]
+WORKDIR /data
+ENTRYPOINT ["dotnet", "/app/BlueBirdDX.dll"]
