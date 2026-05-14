@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using BlueBirdDX.Common.Post;
+using MongoDB.Bson;
 
 namespace BlueBirdDX.WebApp.Api;
 
@@ -27,9 +28,15 @@ public class PostThreadMiniApi
     }
 
     public PostThreadMiniApi(PostThread realThread)
+        : this(realThread._id, realThread.Name, realThread.State)
     {
-        Id = realThread._id.ToString();
-        Name = realThread.Name;
-        State = realThread.State.ToString();
+        //
+    }
+
+    public PostThreadMiniApi(ObjectId id, string name, PostThreadState state)
+    {
+        Id = id.ToString();
+        Name = name;
+        State = state.ToString();
     }
 }

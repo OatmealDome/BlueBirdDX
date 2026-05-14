@@ -24,22 +24,33 @@ public class AccountGroupApiController : ControllerBase
     [Route("/api/v1/group/{groupId}/threads")]
     [ProducesResponseType(typeof(List<PostThreadMiniApi>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public IActionResult GetAccountGroupOwningThreads(string groupId)
+    public async Task<IActionResult> GetAccountGroupOwningThreads(string groupId, CancellationToken cancellationToken)
     {
         if (!ObjectId.TryParse(groupId, out ObjectId groupIdObj))
         {
             return Problem("Invalid group ID", statusCode: 404);
         }
 
-        AccountGroup? group = _accountGroupCollection.AsQueryable().FirstOrDefault(g => g._id == groupIdObj);
+        bool groupExists = await _accountGroupCollection.Find(Builders<AccountGroup>.Filter.Eq(g => g._id, groupIdObj))
+            .Limit(1)
+            .AnyAsync(cancellationToken);
 
-        if (group == null)
+        if (!groupExists)
         {
             return Problem("Invalid group ID", statusCode: 404);
         }
 
-        IEnumerable<PostThread> threads = _postThreadCollection.AsQueryable().Where(p => p.TargetGroup == groupIdObj);
-        
-        return Ok(threads.Select(p => new PostThreadMiniApi(p)).Reverse());
+        var threads = await _postThreadCollection
+            .Find(Builders<PostThread>.Filter.Eq(p => p.TargetGroup, groupIdObj))
+            .SortByDescending(p => p._id)
+            .Project(p => new
+            {
+                Id = p._id,
+                Name = p.Name,
+                State = p.State
+            })
+            .ToListAsync(cancellationToken);
+
+        return Ok(threads.Select(p => new PostThreadMiniApi(p.Id, p.Name, p.State)));
     }
 }
